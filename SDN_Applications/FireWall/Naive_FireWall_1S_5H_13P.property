@@ -1,0 +1,31 @@
+property { 
+	
+	define {
+		client1_illegalAccess = c1.illegalAccess;
+		client2_illegalAccess = c2.illegalAccess;
+		client3_illegalAccess = c3.illegalAccess;
+		client4_illegalAccess = c4.illegalAccess;
+		client5_illegalAccess = c5.illegalAccess;
+		client1_sshProtocolError = c1.sshProtocolError;
+		client2_sshProtocolError = c2.sshProtocolError;
+		client3_sshProtocolError = c3.sshProtocolError;
+		client4_sshProtocolError = c4.sshProtocolError;
+		client5_sshProtocolError = c5.sshProtocolError;
+
+	}
+	
+	Assertion{
+		safety_client1_illegalAccess: !(client1_illegalAccess);
+		safety_client2_illegalAccess: !(client2_illegalAccess);
+		safety_client3_illegalAccess: !(client3_illegalAccess);
+		safety_client4_illegalAccess: !(client4_illegalAccess);
+		safety_client5_illegalAccess: !(client5_illegalAccess);
+		safety_client1_sshProtocolError: !(client1_sshProtocolError);
+		safety_client2_sshProtocolError: !(client2_sshProtocolError);
+		safety_client3_sshProtocolError: !(client3_sshProtocolError);
+		safety_client4_sshProtocolError: !(client4_sshProtocolError);
+		safety_client5_sshProtocolError: !(client5_sshProtocolError);
+				
+	}
+	
+}
