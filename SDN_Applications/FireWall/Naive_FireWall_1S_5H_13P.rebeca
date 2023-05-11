@@ -1,0 +1,470 @@
+reactiveclass Controller(16) { 
+	knownrebecs 
+	{
+		Switch s1;
+	}
+	statevars 
+	{  	
+		byte [10] seenDestIp; //Arraye for saving Ip of Hosts that be distination of packet from trusted zoon
+		byte seenDestIpIndx;// for remember index of  last inserted seenDestIp 
+	}
+	Controller() {
+		//We can Implement one of below function in sitation related to controller
+		//self.initRoutings();
+		//self.ExpressRoutingIsGonaChange() after(1);
+		//self.changeRouting()after(2);
+		
+		
+		//initialing SeenDestIp 
+		int i; 
+     	for (i = 0; i < 10; i = i + 1) {
+     		seenDestIp[i] 	= 0;
+     	} 
+     	seenDestIpIndx = 0 ;
+
+	}
+
+	boolean AddToSeenDestination(byte DestIp)
+	{
+		if (seenDestIpIndx < 10 )
+		{
+			seenDestIp[seenDestIpIndx] = DestIp;
+			seenDestIpIndx++;// = seenDestIpIndx + 1;
+			return true;		
+		}
+		else 
+		{
+			return false;
+		}
+
+	}
+	
+	boolean isSeenDestination(byte DestIp)
+	{
+		int i ;
+		for (i = 0; i < 10; i = i + 1) 
+		{
+			if (seenDestIp[i] == DestIp )
+			{
+				return true;		
+			}
+		}
+		return false;
+
+	}
+	
+	msgsrv initRoutings(){
+		//init routing rules
+		//modifyState(headerID, port, action , protocol) ; 
+		//action: 1 for drop 0 for forward 
+		//protocol: 1 for SSH 0 for Normal
+		
+		//s1.modifyState(10,1,0,1) after(1);
+		//s1.modifyState(10,1,1,0);
+
+	}
+
+	
+	msgsrv ExpressRoutingIsGonaChange()
+	{
+		s1.changeRouting();
+
+	}
+	
+	msgsrv changeRouting(){
+		//init routing rules
+		//s1.modifyState(10,2,0,1) after(3); //Drop SSH protocol by IPId = 10 on port 2
+		//s1.modifyState(10,2,1,0); //forward Other protocols by IpId = 10 on port 2
+
+	}
+   
+	msgsrv newPacketInMessage(byte switchId, byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort){
+		// This message is sent from a switch to the controller when the switch processes a packet
+		// for which it has no action rule to apply.  
+		if (switchId == 1) //routing process related to switch 1
+		{
+			if (SwitchPort == 1 )// if packet arrive from trusted zoon
+			{
+				//forward packet by action = 0 
+				s1.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 0 );
+				// add destination to seen destination
+				AddToSeenDestination(packetDestId);
+				
+			}
+			else if (SwitchPort == 2) // if packet arrive from untrusted zoon
+			{
+				// forward if source seen as a destination then forward because this packet is response
+				if (isSeenDestination(packetSrcId))
+					s1.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 0 );
+				else // drop if source is not seen yet and this is request from untrusted hosts 
+					s1.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 1 );
+			}
+		}
+	}	
+}
+
+reactiveclass Switch(20) { 
+	knownrebecs {
+		Controller controller;
+	} 
+   
+	statevars {
+		byte SwId;
+		boolean illegalAccess;
+		boolean sshProtocolError;
+		byte [10] flowTableHeaderDestIP;
+		byte [10] flowTableHeaderSrcIP;
+		byte [10] flowTableHeaderProtocol;
+		byte [10] flowTableOutPort;
+		byte [10] flowTableActionType;
+		byte [10] flowTablePrioriry; //can be a list- future work
+		//
+		byte [5] SwitchPort_isConnectedto; // 0 for disconnect, 1 for host, 2 for otherSwitch 
+		byte [5] SwitchPort_ConnectedtoHostIdOrSwitchId; // 
+		
+		Host Host1;
+		Host Host2;
+		Host Host3;
+		Host Host4;
+		Host Host5;
+		byte host1Ip;
+		byte host2Ip;
+		byte host3Ip;
+		byte host4Ip;
+		byte host5Ip;
+		byte [10] bufferedPacketeData; 
+		byte packetRepeatCount;
+		boolean packetRepeatedTwice;
+		//boolean IsWaitedForController;
+		boolean isRoutingChanged;
+		boolean isFWError;
+	} 
+   
+	Switch(byte switchId, Host connectedHost1, byte connectedHost1Ip, Host connectedHost2, byte connectedHost2Ip , 
+				Host connectedHost3, byte connectedHost3Ip, Host connectedHost4, byte connectedHost4Ip, Host connectedHost5, byte connectedHost5Ip) 
+	{ 
+	    SwId = switchId;
+	    illegalAccess = false;
+	    sshProtocolError == false;
+		host1Ip = connectedHost1Ip;
+		host2Ip = connectedHost2Ip;
+		host3Ip = connectedHost3Ip;
+		host4Ip = connectedHost4Ip;
+		host5Ip = connectedHost5Ip;
+		Host1 = connectedHost1;
+		Host2 = connectedHost2;
+		Host3 = connectedHost3;
+		Host4 = connectedHost4;
+		Host5 = connectedHost5;
+		
+		
+		isRoutingChanged = false;
+		isFWError = false;
+		int i; 
+     	for (i = 0; i < 10; i = i + 1) {
+     		flowTableHeaderDestIP[i] 	= 0;
+     		flowTableHeaderSrcIP[i]		= 0;
+     		flowTableHeaderProtocol[i] 	= 0;
+     		flowTableOutPort[i] 		= 0;
+     		flowTableActionType[i] 		= 0;
+     		
+     	}
+     	packetRepeatCount 				= 0;
+     	packetRepeatedTwice 			= false;
+     	//IsWaitedForController 			= false;
+
+	}
+	boolean getMatchFields()
+	{
+	}
+	
+	boolean sortFlowTable()
+	{
+	}
+	
+	msgsrv swHandlePacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort) 
+	{ // byte header, byte packet, byte protocol
+	    int i;
+	    boolean hasRuleInTable;
+	    hasRuleInTable = false;
+	    //lookup in flow table 
+	    if ( true) {
+		    for (i = 0; i < 10; i = i + 1) 
+		    {
+		    	//if (hasRuleInTable == true)
+		    		//break; //rules map to action with first match in FlowTable 
+		    	if (flowTableHeaderDestIP[i] == packetDestId 
+		    	&& flowTableHeaderSrcIP[i] == packetSrcId 
+		    	&& flowTableHeaderProtocol[i] == packetProtocol)
+		    	//if match occured 
+		    	{
+		    		hasRuleInTable = true;
+		    		if (flowTableActionType[i] == 1) // drop
+		    		{
+		    			//break;
+					} 
+					else if (flowTableActionType[i] == 0) //forward
+					{ 
+						if (SwId == 1) // rules related to switch1
+						{
+							if (packetDestId == host1Ip)
+		    				{
+		    					Host1.hostHandlePacket(packetSrcId, packetDestId, packetData, packetProtocol, SwitchPort);
+		    				}
+		    				else if (packetDestId == host2Ip)
+		    				{
+		    					Host2.hostHandlePacket(packetSrcId, packetDestId, packetData, packetProtocol, SwitchPort);
+		    				}
+		    				else if (packetDestId == host3Ip)
+		    				{
+		    					Host3.hostHandlePacket(packetSrcId, packetDestId, packetData, packetProtocol, SwitchPort);
+		    				}
+		    				else if (packetDestId == host4Ip)
+		    				{
+		    					Host4.hostHandlePacket(packetSrcId, packetDestId, packetData, packetProtocol, SwitchPort);
+		    				}
+		    				else if (packetDestId == host5Ip)
+		    				{
+		    					Host5.hostHandlePacket(packetSrcId, packetDestId, packetData, packetProtocol, SwitchPort);
+		    				}
+						}
+				
+					} 
+
+				}
+			}
+		}
+		if (hasRuleInTable == false) // New packet recieved without match in F.T.(Flow Table)
+		{
+			controller.newPacketInMessage(SwId, packetSrcId , packetDestId, packetData, packetProtocol, SwitchPort);
+			//wait for controller response
+			//bufferedPacketeData[0] = packetData;
+			//IsWaitedForController = true;
+		}
+		else
+		{
+			//check if 
+		} 
+	}
+	
+	msgsrv changeRouting()
+	{
+		isRoutingChanged = true;
+	}	
+	
+	msgsrv newPacketOutMessage(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort, byte action)
+	{
+	
+		//This message is sent from the controller to a switch to notify 
+		//that it must re-try applying an action rule to a buffered packet. 
+		//The message includes the packet header.
+		
+		//insert new rule to flow table
+		boolean ruleIsInserted;
+		ruleIsInserted = false;
+		int i;
+		for (i = 0; i < 10; i = i + 1) {
+	    	if (ruleIsInserted == false) {
+	    		if (flowTableHeaderDestIP[i] == 0) {
+	    			flowTableHeaderDestIP[i] 	= packetDestId;
+	    			flowTableHeaderSrcIP[i] 	= packetSrcId;
+	    			flowTableOutPort[i] 	= SwitchPort;
+	    			flowTableHeaderProtocol[i] 	= packetProtocol;
+	    			flowTableActionType[i] 	= action;
+	    			ruleIsInserted = true;
+	    		}
+	    	}
+	    }
+	    
+	    if (ruleIsInserted == true){
+	    	self.swHandlePacket(packetSrcId, packetDestId, packetData , packetProtocol, SwitchPort);
+	    	//bufferedPacketeData = 0;
+	    } 
+	    else 
+	    {
+	    	//ERROR
+	    	
+	    }
+		
+	}
+	
+	msgsrv sendOut(byte packetId)
+	{
+	
+	}
+	
+	msgsrv modifyState(byte packetSrcId , byte packetDestId, byte port, byte action, byte protocol)
+	{//action 1 = drop & 0 = forward
+		//new action rules to be inserted into the switchÂ’s flow-table
+		//insert new rule to flow table
+		boolean ruleIsInserted;
+		ruleIsInserted = false;
+		int i;
+		for (i = 0; i < 10; i = i + 1) {
+	    	if (ruleIsInserted == false) {
+	    		if (flowTableHeaderDestIP[i] == 0 || (flowTableHeaderSrcIP[i] == packetSrcId && flowTableHeaderDestIP[i] == packetDestId && flowTableHeaderProtocol[i] == protocol)) {
+	    			flowTableHeaderDestIP[i] 		= packetDestId;
+	    			flowTableHeaderSrcIP[i] 		= packetSrcId;
+	    			flowTableOutPort[i] 			= port;
+	    			flowTableHeaderProtocol[i] 		= protocol;
+	    			flowTableActionType[i] 			= action;
+	    			ruleIsInserted = true;
+	    		}
+	    	}
+	    }
+	   sortFlowTable();
+	}
+	
+	msgsrv get_Ack(int directionS){
+		
+		boolean [4] outMutex;
+		Host N,E,S,W;
+
+		if (sender == N) {
+			outMutex[0] = true;
+		}	
+		else if (sender == E){ 
+			outMutex[1] = true;
+		}	
+		else if (sender == S){
+			outMutex[2] = true;
+			}
+		else if (sender == W){ 
+			outMutex[3] = true;
+		}	
+	}
+	
+	msgsrv getPermission(int switchId){
+		//((Segment)sender).SwitchEntered(SwitchId);
+	}
+
+}
+ 
+reactiveclass Host(17) { 
+	knownrebecs {
+		Switch knownSwitch;
+ 	}
+	statevars { 
+		byte id; 
+		boolean illegalAccess;
+		boolean sshProtocolError;
+		boolean isRoutingChanged;
+		byte knownSwitchPort;  
+	}
+	Host(byte hostId , byte SwitchPortNumber) { 
+		id = hostId;
+		knownSwitchPort = SwitchPortNumber; 
+		if (id == 1) { 
+			// sample package will be send from c1 
+			// to destination host indicated by header IP = 10  // protocol 1 = ssh packet
+
+			// send from host with ip = 1 to destination host with ip = 3 pachetData =1 with protocol = 0
+			self.sendInPacket(1, 3, 1, 0) after(2); //ABS sample
+			self.sendInPacket(1, 5, 2, 0) after(2);//ABS sample //host ip = 1 to destination host with ip = 5 , packetData = 2
+			self.sendInPacket(1, 4, 6, 0) after(2);//ABS sample
+			self.sendInPacket(1, 4, 10, 0) after(2);//ABS sample
+		}
+		if (id == 2) {
+			self.sendInPacket(2, 3, 7, 0) after(2);//ABS sample
+			self.sendInPacket(2, 5, 8, 0) after(2);//ABS sample
+			self.sendInPacket(2, 4, 9, 0) after(2);//ABS sample
+			self.sendInPacket(2, 1, 11, 0) after(2);//ABS sample
+		} 
+		if (id == 3) {
+			self.sendInPacket(3, 2, 3, 0) after(2);//ABS sample
+		} 
+		if (id == 4) {
+			self.sendInPacket(4, 1, 4, 0) after(2);//ABS sample
+		} 
+		if (id == 5) {
+			self.sendInPacket(5, 1, 5, 0) after(2);//ABS sample
+			self.sendInPacket(5, 1, 12, 0) after(2);//ABS sample
+			self.sendInPacket(5, 3, 13, 0) after(2);//My Sample
+		}
+		illegalAccess = false;
+		sshProtocolError = false;
+		isRoutingChanged = false;
+	} 
+
+	msgsrv sendInPacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol) { 
+		knownSwitch.swHandlePacket(packetSrcId, packetDestId, packetData, packetProtocol , knownSwitchPort); 
+	}
+	
+	msgsrv hostHandlePacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort) 
+	{
+		
+		if (id == 1  ) //Hosts in trusted zoon
+		{//packet received in c1,2,3 (trusted hostd)
+			//illegalAccess = true;
+			if (packetProtocol == 1){
+				sshProtocolError = true;
+			}
+			// packetData is = uniqe combination of source and destination for find policy violations
+			// this packetData =  packet number must drop because reached from untrusted zoon withoutrequest
+			if ( false )//packetData == 4 ||packetData == 5 || packetData == 12)
+			{
+				illegalAccess = true;
+			}
+
+		}
+		else if (id == 2 )
+		{
+						//illegalAccess = true;
+			if (packetProtocol == 1){
+				sshProtocolError = true;
+			}
+			// packetData is = uniqe combination of source and destination for find policy violations
+			// this packetData =  packet number must drop because reached from untrusted zoon withoutrequest
+			if ( packetData == 4 ||packetData == 5 || packetData == 12)
+			{
+				illegalAccess = true;
+			}
+		}
+		else if (id == 3)
+		{
+			if ( packetData == 13 )// ||packetData == 5 || packetData == 12)
+			{
+				illegalAccess = true;
+			}
+		}
+		else if (id >= 4)
+		{
+			//illegalAccess = true;
+		}
+		if (packetData == 1 || id == 3) //for check all state without deadlock
+			self.done() after(100);
+	}
+	
+	msgsrv done() {
+		self.done() after(100);
+	}
+	
+}
+
+
+main { 
+	
+	Controller controller(s1):(); 
+   	
+   	//Switch has 2 port ={0,1} 
+   	//trusted host connected to port 1 and untrusted hosts connected to port 2 
+   	//parameters ordered = switchId , 5 pair of ( host and id )
+   	//mission is prevent packets reach from untrusted host to trusted hosts without request from trusted hosts.
+	Switch s1(controller):(1, c1, 1, c2, 2 , c3, 3, c4, 4, c5 , 5); 
+ 
+ 
+	Host c1(s1):(1,1); // connect host c1 to switch s1 by id = 1 to port = 1 of switch
+	Host c2(s1):(2,1); // connect host c2 to switch s1 by id = 2 to port = 1 of switch
+	Host c3(s1):(3,1); // connect host c3 to switch s1 by id = 3 to port = 1 of switch
+	Host c4(s1):(4,2); // connect host c4 to switch s1 by id = 4 to port = 2 of switch
+	Host c5(s1):(5,2); // connect host c5 to switch s1 by id = 5 to port = 2 of switch
+   
+	// Topology:
+	//											[controller]
+	//												  |
+	//	[Computer 1]   [Computer 2]  [Computer 3]-p1-[Switchrouter] -p2- internet -- [Computer 4]
+    //		|              |                         |  |				  |
+    //		|              +-------------------------p1 |				  |
+    //		|                                           | 				  +------[computer 5]
+    //		+-------------------------------------------p1
+}
