@@ -1,0 +1,201 @@
+//Write your code here !
+
+ 
+reactiveclass Controller(10) { 
+
+   
+	statevars { 
+		// forwarding tables for switches     
+		byte [10] switch1TableHeaderColumn; 
+		byte [10] switch1TableOutputColumn; 
+
+		byte [10] switch2TableHeaderColumn;     
+		byte [10] switch2TableOutputColumn;
+		
+    	byte [10] switch3TableHeaderColumn;     
+    	byte [10] switch3TableOutputColumn; 
+	} 
+	
+	Controller() {
+		self.generateDefaultTable();
+	}
+   
+	msgsrv generateDefaultTable() { 
+     
+		// S1 Forwarding Table 
+		// +-----------------+ 
+		// | Header | 10     | 
+		// +-----------------+ 
+		// | Output | 1      | 
+		// +-----------------+ 
+		
+		switch1TableHeaderColumn[0] = 10;     
+		switch1TableOutputColumn[0] = 1; 
+	     
+	    // S2 Forwarding Table 
+	    // +-----------------+ 
+	    // | Header | 10     | 
+	    // +-----------------+ 
+	    // | Output | 2      | 
+	    // +-----------------+ 
+	     
+	    switch2TableHeaderColumn[0] = 10;     
+	    switch2TableOutputColumn[0] = 2; 
+	     
+	    // S3 Forwarding Table 
+	    // +-----------------+ 
+	    // | Header | 10     | 
+	    // +-----------------+ 
+	    // | Output | 0      | 
+	    // +-----------------+      
+	    switch3TableHeaderColumn[0] = 10;   
+	    switch3TableOutputColumn[0] = 0; 
+	} 
+	msgsrv requestTable(byte switchId) {     
+		if (switchId == 1) { 
+			((Switch)sender).tableIssued(switch1TableHeaderColumn, switch1TableOutputColumn); 
+		} else if (switchId == 2) { 
+			((Switch)sender).tableIssued(switch2TableHeaderColumn, switch2TableOutputColumn); 
+		} else { // switchId == 3 
+			((Switch)sender).tableIssued(switch3TableHeaderColumn, switch3TableOutputColumn); 
+		} 
+	} 
+   
+	msgsrv calculateForwardingTable(byte switchId) { 
+		// S1 Forwarding Table 
+		// +-----------------+ 
+		// | Header | 10     | 
+		// +-----------------+ 
+		// | Output | 1      | 
+		// +-----------------+ 
+	     
+	 	switch1TableHeaderColumn[0] = 10;     
+		switch1TableOutputColumn[0] = 1; 
+     
+		// S2 Forwarding Table 
+		// +-----------------+ 
+		// | Header | 10     | 
+	    // +-----------------+ 
+	    // | Output | 2      | 
+	    // +-----------------+ 
+	     
+		switch2TableHeaderColumn[0] = 10;     
+		switch2TableOutputColumn[0] = 2; 
+     
+		// S3 Forwarding Table 
+		// +-----------------+ 
+		// | Header | 10     | 
+		// +-----------------+ 
+		// | Output | 0      | 
+		// +-----------------+ 
+	     
+		switch3TableHeaderColumn[0] = 10;     
+		switch3TableOutputColumn[0] = 0; 
+     
+	    if (switchId == 1) { 
+			((Switch)sender).tableIssued(switch1TableHeaderColumn, switch1TableOutputColumn); 
+	    } else if (switchId == 2) { 
+			((Switch)sender).tableIssued(switch2TableHeaderColumn, switch2TableOutputColumn);
+		} else { // switchId == 3 
+			((Switch)sender).tableIssued(switch3TableHeaderColumn, switch3TableOutputColumn);
+		} 
+	}
+}
+
+reactiveclass Switch(10) { 
+	knownrebecs {
+		Controller controller; 
+	} 
+   
+	statevars {
+		byte id;
+		byte [10] tableHeaderColumn;
+		byte [10] tableOutputColumn;
+		Switch [2] switches;
+		Host host; 
+	} 
+   
+	Switch(byte switchId, Switch s1, Switch s2, Host connectedHost) { 
+	    id = switchId;
+		switches[0] = s1;
+		switches[1] = s2;
+		host = connectedHost;
+		self.requestTableFromController() after(500);
+		self.intractAgentWithController() after(2000); 
+	}
+
+	msgsrv requestTableFromController() {
+		controller.requestTable(id); 
+	} 
+	   
+	msgsrv tableIssued(byte [10] header, byte [10] output) { 
+	    tableHeaderColumn = header;
+		tableOutputColumn = output; 
+	} 
+   
+	msgsrv intractAgentWithController() {
+		controller.calculateForwardingTable(id);
+	} 
+   
+	msgsrv handlePackage(byte header, byte data) { 
+	    int i; 
+	    for (i = 0; i < 10; i = i + 1) {
+	    	if (tableHeaderColumn[i] == header) {
+	    		if (tableOutputColumn[i] == 0) { 
+					host.getPackage(data); 
+				} else { 
+					switches[tableOutputColumn[i] - 1].handlePackage(header, data);
+				} 
+			}
+		} 
+	}
+}
+ 
+reactiveclass Host(3) { 
+	knownrebecs {
+		Switch knownSwitch; 
+ 	} 
+   
+	statevars { 
+		byte id; 
+		byte receivedData; 
+	} 
+   
+	Host(byte hostId) { 
+		id = hostId; 
+		if (id == 1) { // sample package will be send from h1 
+			self.sendPackage(10, 25) after(1000); 
+		} 
+	} 
+   
+	msgsrv sendPackage(byte header, byte data) { 
+		knownSwitch.handlePackage(header, data); 
+	} 
+   
+	msgsrv getPackage(byte data) {
+		receivedData = data; 
+	} 
+}
+ 
+main { 
+	
+	Controller controller():(); 
+   
+	Switch s1(controller):(1, s2, s3, h0); 
+	Switch s2(controller):(2, s1, s3, R1); 
+	Switch s3(controller):(3, s2, s1, R2); 
+	Host h0(s1):(1);
+	Host R1(s2):(2);
+	Host R2(s3):(3);
+   
+	// Topology: 
+	//       _______(C)_______ 
+	//      /        |        \ 
+	//     /_________/\________\ 
+	//    //         |         \\ 
+	//  (S1)_1____1_(S2)_2____1_(S3) 
+	//   |           |           | 
+	//   0           0           0 
+	//   |           |           | 
+	//  (H0)        (R1)        (R2)  
+} 
