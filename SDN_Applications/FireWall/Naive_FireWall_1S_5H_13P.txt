@@ -1,0 +1,11 @@
+This code models a sample of SDN naive firewall that has one switch. This switch is connect to the Local LAN with three host through port 1 and to Internet Through port 2.
+We abstract internet hosts to just two host that was be destination of internal LAN's host.
+The topology of network :
+	 Topology:
+												                         [controller]
+													                             |
+		[Computer 1]   [Computer 2]  [Computer 3]-p1-[Switchrouter] -p2--- [Computer 4]
+    		|              |                         |  |				  |
+    		|              +-------------------------p1 |				  |
+    		|                                           | 				p2 +------[computer 5]
+    		+-------------------------------------------p1
