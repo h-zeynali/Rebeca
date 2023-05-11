@@ -1,0 +1,13 @@
+property { 
+	
+	define {
+		R1_packetReceivedTwice = s1.packetRepeatedTwice;
+
+	}
+	Assertion{
+
+		safety_R1_packetReceivedTwice: !(R1_packetReceivedTwice);
+
+	}
+	
+}
