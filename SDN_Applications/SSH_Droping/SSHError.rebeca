@@ -1,0 +1,250 @@
+//Write your code here !
+env int flowTableRowSize = 10; 
+ 
+reactiveclass Controller(10) { 
+	knownrebecs {
+		Switch s1;
+		Switch s2;
+	}
+	statevars {  	
+
+	}
+	Controller() {
+		self.initRoutings();
+	}
+	msgsrv initRoutings(){
+		//init routing rules
+		s1.modifyState(10,1,0,1) after(1);//modifyState(headerID, port, action , protocol)
+		s1.modifyState(10,1,1,0) after(1);//action 1 for drop 0 for forward 
+
+		s2.modifyState(10,0,0,1) after(1);//protocol 1 for SSH 0 for Normal
+		s2.modifyState(10,0,1,0) after(1);
+	}
+   
+	msgsrv newPacketInMessage(byte switchId, byte header, byte protocol){
+		// This message is sent from a switch to the controller when the switch processes a packet
+		// for which it has no action rule to apply.  
+				
+		if (protocol == 1){// Drop ssh packets
+				if (switchId == 1) {
+		    	s1.newPacketOutMessage(header , 1 , 1 , 1);//action 1 = drop
+				//s2.modifyState((header , 1 , 1 , 1);//action 1 = drop
+			} else if (switchId == 2) {
+			 	//s1.modifyState(header , 1 , 1 , 1);//action 1 = drop
+				s2.newPacketOutMessage(header , 1 , 1 , 1);//action 1 = drop
+			}	
+		}else{  // send port 0 to 1 & port 1 to 0 
+			if (switchId == 1) {
+		    	//so send message to s1 to set flow table port 1 for header IP = 10
+		    	s1.newPacketOutMessage(header, 1, 0, protocol);
+		    	//and send message to s2 to set port 0 for header IP = 10
+				s2.modifyState(header, 1, 0 , protocol);
+			} else if (switchId == 2) {
+			 	s1.modifyState(header, 1, 0 , protocol);
+				s2.newPacketOutMessage(header, 1, 0 , protocol);
+			}				 
+		}
+
+	}
+	
+}
+
+reactiveclass Switch(10) { 
+	knownrebecs {
+		Controller controller; 
+	} 
+   
+	statevars {
+		byte id;
+		byte [10] flowTableHeaderDestIP;
+		byte [10] flowTableHeaderProtocol;
+		byte [10] flowTableOutPort;
+		byte [10] flowTableActionType;
+		//byte [10] flowTableOutPort;//can be a list- future work
+
+		
+		Switch  neighborSwitch;
+		Host host;
+		byte bufferedPackete; 
+		byte packetRepeatCount;
+		boolean packetRepeatedTwice;
+		boolean IsWaitedForController;
+	} 
+   
+	Switch(byte switchId, Host connectedHost, Switch s1) { 
+	    id = switchId;
+		neighborSwitch = s1;
+		host = connectedHost;
+		int i; 
+     	for (i = 0; i < 10; i = i + 1) {
+     		flowTableHeaderDestIP[i] 	= 0;
+     		flowTableOutPort[i] 	= 0;
+     		flowTableActionType[i] 	= 0;
+     		flowTableHeaderProtocol[i] 	= 0;
+     	}
+     	packetRepeatCount = 0;
+     	packetRepeatedTwice = false;
+     	IsWaitedForController = false;
+
+	}
+	
+	msgsrv swHandlePacket(byte header, byte packet, byte protocol) { 
+	    int i;
+	    boolean hasRuleInTable;
+	    hasRuleInTable = false;
+
+	    //lookup in flow table 
+	    if ( header!= 0) {
+		    for (i = 0; i < 10; i = i + 1) {
+		    	if (flowTableHeaderDestIP[i] == header) {
+		    		hasRuleInTable = true;
+		    		if (flowTableOutPort[i] == 0) { 
+						host.hostHandlePacket(packet, protocol); 
+					} else if (flowTableOutPort[i] == 1){ 
+						neighborSwitch.swHandlePacket(header, packet, protocol);				
+					}
+				}
+			}
+		}
+		if (hasRuleInTable == false){
+			controller.newPacketInMessage(id, header, protocol);
+			//wait for controller response
+			bufferedPackete = packet;
+			IsWaitedForController = true;
+		}
+		else
+		{
+			//check if 
+		} 
+	}
+		
+	msgsrv newPacketOutMessage(byte header, byte port, byte action, byte protocol){
+	
+		//This message is sent from the controller to a switch to notify 
+		//that it must re-try applying an action rule to a buffered packet. 
+		//The message includes the packet header.
+		
+		//insert new rule to flow table
+		boolean ruleIsInserted;
+		ruleIsInserted = false;
+		int i;
+		for (i = 0; i < 10; i = i + 1) {
+	    	if (ruleIsInserted == false) {
+	    		if (flowTableHeaderDestIP[i] == 0) {
+	    			flowTableHeaderDestIP[i] 	= header;
+	    			flowTableOutPort[i] 	= port;
+	    			flowTableHeaderProtocol[i] 	= protocol;
+	    			flowTableActionType[i] 	= action;
+	    			ruleIsInserted = true;
+	    		}
+	    	}
+	    }
+	    
+	    if (ruleIsInserted == true){
+	    	self.swHandlePacket(header, bufferedPackete , protocol);
+	    	//bufferedPackete = 0;
+	    } 
+	    else 
+	    {
+	    	//ERROR
+	    	
+	    }
+		
+	}
+	
+	msgsrv sendOut(byte packetId){
+	
+	}
+	
+	msgsrv modifyState(byte headerID, byte port, byte action, byte protocol){//action 1 = drop & 0 = forward
+		//new action rules to be inserted into the switchâ€™s flow-table
+		//insert new rule to flow table
+		boolean ruleIsInserted;
+		ruleIsInserted = false;
+		int i;
+		for (i = 0; i < 10; i = i + 1) {
+	    	if (ruleIsInserted == false) {
+	    		if (flowTableHeaderDestIP[i] == 0 || (flowTableHeaderDestIP[i] == headerID && flowTableHeaderProtocol[i] == protocol)) {
+	    			flowTableHeaderDestIP[i] 		= headerID;
+	    			flowTableOutPort[i] 		= port;
+	    			flowTableHeaderProtocol[i] 		= protocol;
+	    			flowTableActionType[i] 		= action;
+	    			ruleIsInserted = true;
+	    		}
+	    	}
+	    }
+	}
+	
+
+
+}
+ 
+reactiveclass Host(10) { 
+	knownrebecs {
+		Switch knownSwitch; 
+ 	}
+	statevars { 
+		byte id; 
+		byte receivedData;
+		boolean shhError; 
+	}
+	Host(byte hostId) { 
+		id = hostId; 
+		if (id == 1) { 
+			// sample package will be send from h0 
+			// to destination host indicated by header IP = 10 with two load balancer R1 and R2
+			self.sendInPacket(10, 1, 0) after(2); //after(?(10, 20, 30));
+			self.sendInPacket(10, 1, 1) after(2); // protocol 1 = ssh packet
+		//        delay(?(0, 1));
+        //admin.rescueReach() after(netDelay) deadline(rescueDeadline - netDelay);
+ 
+		} 
+		shhError = false;
+	}  
+	msgsrv sendInPacket(byte header, byte packet, byte protocol) { 
+		knownSwitch.swHandlePacket(header, packet, protocol); 
+	}
+	
+	msgsrv hostHandlePacket(byte packet, byte protocol) {
+		receivedData = packet;
+		if (id != 0 ) {//packet received in c1
+			if (protocol == 1){
+				shhError = true;
+			}
+			if (receivedData == 1){
+				self.done() after(100);
+			}
+		}
+	}
+	
+	msgsrv done() {
+		self.done() after(100);
+	}
+	
+}
+
+
+main { 
+	
+	Controller controller(s1, s2):(); 
+   	
+   	//each switch has 2 port ={0,1} , related hosts connected to port 0
+   	//parameters ordered = id , port0 connected host, port 1 connected switch, port 2 connected switch
+	Switch s1(controller):(1, c0, s2); 
+	Switch s2(controller):(2, c1, s1); 
+ 
+	Host c0(s1):(1);
+	Host c1(s2):(2);
+
+   
+	// Topology: 
+	//       _______(C)  
+	//      /        |  
+	//    //         |         
+	//  (S1)_1____1_(S2)
+	//   |           |            
+	//   0           0            
+	//   |           |            
+	//  (c0)        (c1)         
+}
+
