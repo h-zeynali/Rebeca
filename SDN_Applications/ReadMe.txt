@@ -1,1 +1,1 @@
-This folder stores Rebeca codes related for application of Software-Defined network (SDN).
+This folder stores Rebeca codes related to application of Software-Defined network (SDN).
