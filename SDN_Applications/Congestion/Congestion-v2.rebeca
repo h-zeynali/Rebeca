@@ -1,0 +1,777 @@
+reactiveclass Controller(16) { 
+	knownrebecs 
+	{
+		Switch s1;
+		Switch s2;
+		Switch s3;
+		Switch s4;
+		Switch s5;
+	}
+	statevars 
+	{  	
+		//byte [10] seenDestIp; //Arraye for saving Ip of Hosts that be distination of packet from trusted zoon
+		//byte seenDestIpIndx;// for remember index of  last inserted seenDestIp 
+		int [5] switchesCurrentTime;
+		boolean assertion4test;
+	}
+		
+	Controller() {
+		//We can Implement one of below function in sitation related to controller
+		self.initRoutings();
+		self.changeRoutingsF1() after(2);
+		self.changeRoutingsF2() after(2);
+		//initialing  
+     	//seenDestIpIndx = 0 ;
+     	
+     	resetSwitchesCurrentTimeArray();
+     	assertion4test = false;
+	}
+
+	msgsrv bundleOpenReply()
+	{
+		self.bundleAdd();
+	}
+	
+	msgsrv bundleAdd()
+	{
+		//changeRoutings();
+	}
+	
+
+	//BM//	
+	msgsrv initRoutings(){
+		//init routing rules
+		 
+		//action: 1 for drop 0 for forward 
+		//protocol: 1 for SSH 0 for Normal
+		//msgsrv modifyState(byte packetSrcId , byte packetDestId, byte port, byte action, byte protocol)
+		
+		// path = f1_before
+		s1.modifyState(1, 5, 1, 0, 0) ;
+		s2.modifyState(1, 5, 1, 0, 0) ;
+		s5.modifyState(1, 5, 0, 0, 0) ;
+		
+		//path = f2_before
+		s3.modifyState(3, 5, 2, 0, 0) ;
+		s4.modifyState(3, 5, 2, 0, 0) ;
+		s5.modifyState(3, 5, 0, 0, 0) ;
+	}
+	
+	msgsrv changeRoutingsF1(){
+		//init routing rules
+		 
+		//action: 1 for drop 0 for forward 
+		//protocol: 1 for SSH 0 for Normal
+		//msgsrv modifyState(byte packetSrcId , byte packetDestId, byte port, byte action, byte protocol)
+		
+		// path = f1_after
+		s1.modifyState(1, 5, 2, 0, 0);
+		s4.modifyState(1, 5, 2, 0, 0);
+		s5.modifyState(1, 5, 0, 0, 0);
+		
+	}
+	
+	msgsrv changeRoutingsF2()
+	{
+		
+		// path = f2_after
+		s3.modifyState(3, 5, 1, 0, 0);
+		s2.modifyState(3, 5, 1, 0, 0);
+		s5.modifyState(3, 5, 0, 0, 0);
+	}
+	
+
+//BM//
+	msgsrv bundleSetMyCurrentTime(byte SwId, int currentTime)
+	{
+		switchesCurrentTime[ ( SwId - 1 ) ] = currentTime;
+		
+		if ( SwId == 1 && currentTime == 1 ) //((Switch)sender).
+		{
+			assertion4test = true;
+		}
+		else if ( SwId == 2 && currentTime == 1) 
+		{
+			//assertion4test = true;
+		}
+		else if ( SwId == 3 && currentTime == 1) 
+		{
+			//assertion4test = true;
+		}
+		else if ( SwId == 4 && currentTime == 1) 
+		{
+			//assertion4test = true;
+		}
+		else if ( SwId == 5 && currentTime == 1) 
+		{
+			//assertion4test = true;
+		}
+
+
+	}
+	
+	msgsrv newPacketInMessage(	byte switchId, byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort/*,
+								byte first_visited_sw_id, byte first_visited_sw_time, byte first_visited_sw_out_port,
+								byte second_visited_sw_id, byte second_visited_sw_time, byte second_visited_sw_out_port,
+								byte third_visited_sw_id, byte third_visited_sw_time, byte third_visited_sw_out_port,
+								byte forth_visited_sw_id, byte forth_visited_sw_time, byte forth_visited_sw_out_port,
+								byte fifth_visited_sw_id, byte fifth_visited_sw_time, byte fifth_visited_sw_out_port*/)
+	
+	{
+		// This message is sent from a switch to the controller when the switch processes a packet
+		// for which it has no action rule to apply.  
+
+		if (switchId == 1 )// if unknown packet arrive from s1
+		{
+			//forward packet by action = 0 
+			//s1.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 0 );
+			assertion4test = true;
+		}
+		else if (switchId == 2) // if packet arrive from s2 
+		{
+			//action = 1 means drop the packet
+			//s2.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 1 );
+			assertion4test = true;
+		}
+		else if (switchId == 3) // if packet arrive from s3 
+		{
+			//action = 1 means drop the packet
+			//s3.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 1 );
+			assertion4test = true;
+		}
+		else if (switchId == 4) // if packet arrive from s3 
+		{
+			//action = 1 means drop the packet
+			//s3.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 1 );
+			assertion4test = true;
+		}
+		else if (switchId == 5) // if packet arrive from s3 
+		{
+			//action = 1 means drop the packet
+			//s3.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,SwitchPort, 1 );
+			assertion4test = true;
+		}
+
+		
+
+
+	}
+	
+	boolean resetSwitchesCurrentTimeArray()
+	{
+	
+		int i; 
+     	for (i = 0; i < 5; i = i + 1) 
+     	{
+     		switchesCurrentTime[i] 	= 0;
+     	}
+	}
+	
+	
+	
+}
+reactiveclass Switch(20) { 
+	knownrebecs {
+		Controller controller;
+	} 
+   
+	statevars {
+		byte SwId;
+		int CurrentTime;
+		int [3/*portCount*/] packetCountInEachPortInEachTime;
+		Switch [2] neighbor_switches;
+		Host host_connected_to_this_switch;
+		
+		byte [10] flowTableHeaderDestIP;
+		byte [10] flowTableHeaderSrcIP;
+		byte [10] flowTableHeaderProtocol;
+		byte [10] flowTableOutPort;
+		byte [10] flowTableActionType;
+		byte [10] flowTablePrioriry; //can be a list- future work
+
+		byte [10] bundleHeaderDestIP;
+		byte [10] bundleHeaderSrcIP;
+		byte [10] bundleHeaderProtocol;
+		byte [10] bundleOutPort;
+		byte [10] bundleActionType;
+						
+		boolean illegalAccess;
+		boolean liveness_error;
+		boolean isRoutingChanged;
+		boolean isBundleOpened;
+	}
+	 
+   	Switch(byte switchId, Host connectedHost , Switch neighbor_switches1, Switch neighbor_switches2) 
+   	{
+	    SwId = switchId;
+	    neighbor_switches[0] = neighbor_switches1;
+		neighbor_switches[1] = neighbor_switches2;
+		host_connected_to_this_switch = connectedHost;
+		
+	    illegalAccess 		= false;
+	    liveness_error 		= false;
+		isRoutingChanged 	= false;
+		isBundleOpened 		= false;
+		
+		FT_reset(); // reset Flow table array
+     	boundle_reset();// reset bundle array
+     	
+     	CurrentTime = 0;
+     	int i;
+     	for (i = 0 ; i < 3/*portCount*/ ; i++)
+     	{
+     		packetCountInEachPortInEachTime[i] = 0;
+     	}
+   	
+     	self.boundle_send_time_to_sync();
+
+	}
+	
+	
+	msgsrv swHandlePacket(	byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort/*,
+							byte first_visited_sw_id, byte first_visited_sw_time, byte first_visited_sw_out_port,
+							byte second_visited_sw_id, byte second_visited_sw_time, byte second_visited_sw_out_port,
+							byte third_visited_sw_id, byte third_visited_sw_time, byte third_visited_sw_out_port,
+							byte forth_visited_sw_id, byte forth_visited_sw_time, byte forth_visited_sw_out_port,
+							byte fifth_visited_sw_id, byte fifth_visited_sw_time, byte fifth_visited_sw_out_port*/) 
+	{ // byte header, byte packet, byte protocol
+	    boolean hasRuleInTable;
+	    hasRuleInTable = false;
+	    //lookup in flow table 
+	    int i;
+	    if ( true ) {
+		    for (i = 0; i < 10; i = i + 1) 
+		    {
+		    	//if (hasRuleInTable == true)
+		    		//break; //rules map to action with first match in FlowTable 
+		    	if (flowTableHeaderDestIP[i] 	== packetDestId 
+		    	&& flowTableHeaderSrcIP[i] 		== packetSrcId 
+		    	&& flowTableHeaderProtocol[i] 	== packetProtocol)
+		    	//if match occured 
+		    	{
+
+		    		
+		    		hasRuleInTable = true;
+		    		if (flowTableActionType[i] == 1) // drop
+		    		{
+		    			//break;
+					} 
+					else if (flowTableActionType[i] == 0) //forward
+					{
+					
+						// Count Out packet
+		    			packetCountInEachPortInEachTime[flowTableOutPort[i]]++;
+		    			
+						// set switch forwarding tag to packet	
+						/*				
+						if ( first_visited_sw_id == 0 )
+						{
+							first_visited_sw_id 		= SwId;
+							first_visited_sw_time 		= (byte) CurrentTime;
+							first_visited_sw_out_port 	= flowTableOutPort[i];
+						}
+						else if ( second_visited_sw_id == 0 )
+						{
+							second_visited_sw_id 		= SwId;
+							second_visited_sw_time 		= (byte)CurrentTime;
+							second_visited_sw_out_port 	= flowTableOutPort[i];
+						}
+						else if ( third_visited_sw_id == 0 )
+						{
+							third_visited_sw_id 		= SwId;
+							third_visited_sw_time 		= (byte)CurrentTime;
+							third_visited_sw_out_port 	= flowTableOutPort[i];
+						}							
+						else if ( forth_visited_sw_id == 0 )
+						{
+							forth_visited_sw_id 		= SwId;
+							forth_visited_sw_time 		= (byte)CurrentTime;
+							forth_visited_sw_out_port 	= flowTableOutPort[i];
+						}							
+						else if ( fifth_visited_sw_id == 0 )
+						{
+							fifth_visited_sw_id 		= SwId;
+							fifth_visited_sw_time 		= (byte)CurrentTime;
+							fifth_visited_sw_out_port 	= flowTableOutPort[i];
+						}
+						*/
+											 
+						if (flowTableOutPort[i] == 0) // rules related to host
+						{
+							host_connected_to_this_switch.hostHandlePacket(	packetSrcId, packetDestId, packetData, packetProtocol, SwitchPort/*,
+								    										first_visited_sw_id,  first_visited_sw_time,  first_visited_sw_out_port,
+																 			second_visited_sw_id,  second_visited_sw_time,  second_visited_sw_out_port,
+																 			third_visited_sw_id,  third_visited_sw_time,  third_visited_sw_out_port,
+																 			forth_visited_sw_id,  forth_visited_sw_time,  forth_visited_sw_out_port,
+																 			fifth_visited_sw_id,  fifth_visited_sw_time,  fifth_visited_sw_out_port*/);
+						}
+						else if (flowTableOutPort[i] == 1) // rules related to neighbor_switches1
+						{
+
+	    					neighbor_switches[0].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  SwitchPort/*,
+	    														 first_visited_sw_id,  first_visited_sw_time,  first_visited_sw_out_port,
+																 second_visited_sw_id,  second_visited_sw_time,  second_visited_sw_out_port,
+																 third_visited_sw_id,  third_visited_sw_time,  third_visited_sw_out_port,
+																 forth_visited_sw_id,  forth_visited_sw_time,  forth_visited_sw_out_port,
+																 fifth_visited_sw_id,  fifth_visited_sw_time,  fifth_visited_sw_out_port*/);
+						}
+						else // rules related to neighbor_switches2
+						{
+	    					neighbor_switches[1].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  SwitchPort/*,
+	    														 first_visited_sw_id,  first_visited_sw_time,  first_visited_sw_out_port,
+																 second_visited_sw_id,  second_visited_sw_time,  second_visited_sw_out_port,
+																 third_visited_sw_id,  third_visited_sw_time,  third_visited_sw_out_port,
+																 forth_visited_sw_id,  forth_visited_sw_time,  forth_visited_sw_out_port,
+																 fifth_visited_sw_id,  fifth_visited_sw_time,  fifth_visited_sw_out_port*/);
+						}
+				
+					} 
+
+				}
+			}
+		}
+		if (hasRuleInTable == false) // New packet recieved without match in F.T.(Flow Table)
+		{
+			controller.newPacketInMessage(	SwId, packetSrcId , packetDestId, packetData, packetProtocol, SwitchPort/*,
+											first_visited_sw_id,  first_visited_sw_time,  first_visited_sw_out_port,
+											second_visited_sw_id,  second_visited_sw_time,  second_visited_sw_out_port,
+											third_visited_sw_id,  third_visited_sw_time,  third_visited_sw_out_port,
+											forth_visited_sw_id,  forth_visited_sw_time,  forth_visited_sw_out_port,
+											fifth_visited_sw_id,  fifth_visited_sw_time,  fifth_visited_sw_out_port*/);
+			//wait for controller response
+			//IsWaitedForController = true;
+		}
+		else
+		{
+			//check if 
+		} 
+	}
+	
+
+	
+	msgsrv newPacketOutMessage(	byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort, byte action/*,
+								byte first_visited_sw_id, byte first_visited_sw_time, byte first_visited_sw_out_port,
+								byte second_visited_sw_id, byte second_visited_sw_time, byte second_visited_sw_out_port,
+								byte third_visited_sw_id, byte third_visited_sw_time, byte third_visited_sw_out_port,
+								byte forth_visited_sw_id, byte forth_visited_sw_time, byte forth_visited_sw_out_port,
+								byte fifth_visited_sw_id, byte fifth_visited_sw_time, byte fifth_visited_sw_out_port*/)
+	{
+	
+		//This message is sent from the controller to a switch to notify 
+		//that it must re-try applying an action rule to a buffered packet. 
+		//The message includes the packet header.
+		
+		//insert new rule to flow table
+		boolean ruleIsInserted;
+		ruleIsInserted = insertRuleInFT(packetSrcId , packetDestId, SwitchPort, action, packetProtocol);
+	    
+	    if (ruleIsInserted == true){
+	    	self.swHandlePacket(packetSrcId, packetDestId, packetData , packetProtocol, SwitchPort/*,
+								first_visited_sw_id,  first_visited_sw_time,  first_visited_sw_out_port,
+								second_visited_sw_id,  second_visited_sw_time,  second_visited_sw_out_port,
+								third_visited_sw_id,  third_visited_sw_time,  third_visited_sw_out_port,
+								forth_visited_sw_id,  forth_visited_sw_time,  forth_visited_sw_out_port,
+								fifth_visited_sw_id,  fifth_visited_sw_time,  fifth_visited_sw_out_port*/) ;
+	    } 
+	    else 
+	    {
+	    	//ERROR
+	    	
+	    }
+		
+	}
+
+	msgsrv modifyState(byte packetSrcId , byte packetDestId, byte port, byte action, byte protocol)
+	{
+		if (isBundleOpened)
+		{
+			insertRuleInBundle( packetSrcId , packetDestId, port, action, protocol);
+		}
+		else
+		{
+			insertRuleInFT( packetSrcId , packetDestId, port, action, protocol);
+		}
+
+	}
+//BM//	
+	msgsrv boundle_send_time_to_sync()
+	{
+		//controller.bundleSetMyCurrentTime(SwId ,CurrentTime);
+		delay(1);
+		CurrentTime = (CurrentTime + 1);
+		
+		int i;
+     	for (i = 0 ; i < 3/*portCount*/ ; i++)
+     	{
+     		packetCountInEachPortInEachTime[i] = 0;
+     	}
+     	
+		if ( CurrentTime < 5)
+			self.boundle_send_time_to_sync();
+	}
+	void checkPacketNumbers()
+	{
+	
+	}	
+	
+	msgsrv boundle_open()
+	{
+		isBundleOpened = true;
+	}
+	
+	msgsrv boundle_close()
+	{
+		isBundleOpened = false;
+	}
+//BM//
+	msgsrv boundle_commit(byte Ts)
+	{
+	
+	}
+	
+	msgsrv boundle_execute()
+	{
+		int j; 
+     	for (j = 0; j < 10; j = j + 1) 
+     	{
+     		if (bundleHeaderDestIP[j] != 0)
+     		{
+			 	insertRuleInFT( bundleHeaderSrcIP[j] , bundleHeaderDestIP[j], bundleOutPort[j], bundleActionType[j], bundleHeaderProtocol[j]);
+     		}
+     	}
+     	boundle_reset();
+	}	
+	
+	msgsrv boundle_discard()
+	{
+		
+	}	
+	
+	boolean boundle_reset()
+	{
+		int j; 
+     	for (j = 0; j < 10; j = j + 1) 
+     	{
+     		if (bundleHeaderDestIP[j] != 0)
+     		{
+			 	bundleHeaderSrcIP[j]	= 0;
+	 		    bundleHeaderDestIP[j] 	= 0;
+	 		    bundleOutPort[j] 		= 0;
+	 		    bundleActionType[j] 	= 0;		 		
+		 		bundleHeaderProtocol[j] = 0;
+     		}
+     	}
+	}	
+	
+	boolean FT_reset()
+	{
+		int i; 
+     	for (i = 0; i < 10; i = i + 1) 
+     	{
+     		flowTableHeaderSrcIP[i]		= 0;
+     		flowTableHeaderDestIP[i] 	= 0;
+     		flowTableOutPort[i] 		= 0;
+     		flowTableActionType[i] 		= 0;
+     		flowTableHeaderProtocol[i] 	= 0;
+     	}
+	}
+	
+	boolean getMatchFields()
+	{
+	}
+	
+	boolean sortFlowTable()
+	{
+	}
+	
+	boolean insertRuleInFT(byte packetSrcId , byte packetDestId, byte port, byte action, byte protocol)
+	{
+			//action 1 = drop & 0 = forward
+			//new action rules to be inserted into the switch\92s flow-table
+			//insert new rule to flow table
+			boolean ruleIsInserted;
+			ruleIsInserted = false;
+			int i;
+			for (i = 0; i < 10; i = i + 1) {
+	    		if (ruleIsInserted == false) {
+	    			if (flowTableHeaderDestIP[i] == 0 || (flowTableHeaderSrcIP[i] == packetSrcId && flowTableHeaderDestIP[i] == packetDestId && flowTableHeaderProtocol[i] == protocol)) {
+	    				flowTableHeaderDestIP[i] 		= packetDestId;
+	    				flowTableHeaderSrcIP[i] 		= packetSrcId;
+	    				flowTableOutPort[i] 			= port;
+	    				flowTableHeaderProtocol[i] 		= protocol;
+	    				flowTableActionType[i] 			= action;
+	    				ruleIsInserted = true;
+	    			}
+	    		}
+	    	}
+	   		sortFlowTable();
+	   		return ruleIsInserted;
+	}
+	
+	boolean insertRuleInBundle(byte packetSrcId , byte packetDestId, byte port, byte action, byte protocol)
+	{
+			//action 1 = drop & 0 = forward
+			//new action rules to be inserted into the switch\92s flow-table
+			//insert new rule to flow table
+			boolean ruleIsInserted;
+			ruleIsInserted = false;
+			int i;
+			for (i = 0; i < 10; i = i + 1) {
+	    		if (ruleIsInserted == false) {
+	    			if (bundleHeaderDestIP[i] == 0 ) {
+	    				bundleHeaderDestIP[i] 		= packetDestId;
+	    				bundleHeaderSrcIP[i] 		= packetSrcId;
+	    				bundleOutPort[i] 			= port;
+	    				bundleHeaderProtocol[i] 	= protocol;
+	    				bundleActionType[i] 		= action;
+	    				ruleIsInserted = true;
+	    			}
+	    		}
+	    	}
+	   		//sortFlowTable();
+	   		return ruleIsInserted;
+	}
+	
+	
+
+}
+reactiveclass Host(17) { 
+	knownrebecs {
+		Switch knownSwitch;
+ 	}
+	statevars { 
+		byte id; 
+		boolean illegalAccess;
+		boolean liveness_error;
+		boolean conjestion_error;
+		boolean isRoutingChanged;
+		byte knownSwitchPort;  
+		int [2] packet_counter;
+		/*
+		//byte [2][15] packet_trace;
+		byte [15] packet1_trace;
+		byte [15] packet2_trace;
+		*/
+	}
+	Host(byte hostId , byte SwitchPortNumber) { 
+		id = hostId;
+		knownSwitchPort = SwitchPortNumber; 
+		illegalAccess = false;
+		liveness_error = false;
+		conjestion_error = false;
+		isRoutingChanged = false;
+		int i;
+		for (i = 0; i < 2 ; i = i+1)
+			packet_counter[i] = 0;
+		/*
+		int j ;
+		for (j=0 ; j < 15 ; j = j+1)
+		{
+			packet1_trace[j] = 0;
+			packet2_trace[j] = 0;
+		}
+		*/
+		if (id == 1) { 
+			// sample package will be send from c1 
+			// to destination host indicated by header IP = 10  // protocol 1 = ssh packet
+
+			// send from host with ip = 1 to destination host with ip = 5 packetData =1 with protocol = 0
+			self.sendInPacket(1, 5, 1, 0/*, 0,0,0, 0,0,0 ,0,0,0 ,0,0,0 ,0,0,0*/) after(1); // should go through path = f1 - visited switches set to zero
+			self.sendInPacket(1, 5, 3, 0/*, 0,0,0, 0,0,0 ,0,0,0 ,0,0,0 ,0,0,0*/) after(2);
+
+		}
+		if (id == 2) 
+		{
+//BM//HostConstructor
+		} 
+		if (id == 3)
+		{
+			self.sendInPacket(3, 5, 2, 0/*, 0,0,0, 0,0,0 ,0,0,0 ,0,0,0 ,0,0,0*/) after(1); // should go through path = f2
+			self.sendInPacket(3, 5, 4, 0/*, 0,0,0, 0,0,0 ,0,0,0 ,0,0,0 ,0,0,0*/) after(2);
+		} 
+		if (id == 4) 
+		{
+		} 
+		if (id == 5) 
+		{
+
+		}
+
+	} 
+
+	msgsrv sendInPacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol/*,
+						byte first_visited_sw_id, byte first_visited_sw_time, byte first_visited_sw_out_port,
+						byte second_visited_sw_id, byte second_visited_sw_time, byte second_visited_sw_out_port,
+						byte third_visited_sw_id, byte third_visited_sw_time, byte third_visited_sw_out_port,
+						byte forth_visited_sw_id, byte forth_visited_sw_time, byte forth_visited_sw_out_port,
+						byte fifth_visited_sw_id, byte fifth_visited_sw_time, byte fifth_visited_sw_out_port*/) 
+	{ 
+		knownSwitch.swHandlePacket(	packetSrcId, packetDestId, packetData, packetProtocol , knownSwitchPort/*,
+									first_visited_sw_id,  first_visited_sw_time,  first_visited_sw_out_port,
+									second_visited_sw_id,  second_visited_sw_time,  second_visited_sw_out_port,
+									third_visited_sw_id,  third_visited_sw_time,  third_visited_sw_out_port,
+									forth_visited_sw_id,  forth_visited_sw_time,  forth_visited_sw_out_port,
+									fifth_visited_sw_id,  fifth_visited_sw_time,  fifth_visited_sw_out_port*/) ; 
+	}
+	
+	msgsrv hostHandlePacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte SwitchPort/*,
+							byte first_visited_sw_id, byte first_visited_sw_time, byte first_visited_sw_out_port,
+							byte second_visited_sw_id, byte second_visited_sw_time, byte second_visited_sw_out_port,
+							byte third_visited_sw_id, byte third_visited_sw_time, byte third_visited_sw_out_port,
+							byte forth_visited_sw_id, byte forth_visited_sw_time, byte forth_visited_sw_out_port,
+							byte fifth_visited_sw_id, byte fifth_visited_sw_time, byte fifth_visited_sw_out_port*/) 
+	{
+		
+		if (id == 1  ) 
+		{
+			// packetData is = uniqe combination of source and destination for find policy violations
+			if ( packetData == 1  || packetData == 2 )
+			{
+				illegalAccess = true;
+			}
+		}
+		else if (id == 2 )
+		{
+			// packetData is = uniqe combination of source and destination for find policy violations
+			if ( packetData == 1  || packetData == 2 )
+			{
+				illegalAccess = true;
+			}
+		}
+		else if (id == 3)
+		{
+			// packetData is = uniqe combination of source and destination for find policy violations
+			if ( packetData == 1  || packetData == 2 )
+			{
+				illegalAccess = true;
+			}
+		}
+		else if (id == 4)
+		{
+			// packetData is = uniqe combination of source and destination for find policy violations
+			if ( packetData == 1  || packetData == 2 )
+			{
+				illegalAccess = true;
+			}
+		}
+		else if (id == 5)
+		{
+			// packetData is = uniqe combination of source and destination for find policy violations
+			//packet_counter[packetData-1] = packet_counter[packetData-1] + 1;
+			if (packetData == 1 )
+			{
+				packet_counter[0]=packet_counter[0]+1;
+				/* 
+				packet1_trace[0] = first_visited_sw_id;
+				packet1_trace[1] = first_visited_sw_time;
+				packet1_trace[2] = first_visited_sw_out_port;
+				
+				packet1_trace[3] = second_visited_sw_id;
+				packet1_trace[4] = second_visited_sw_time;
+				packet1_trace[5] = second_visited_sw_out_port;
+				
+				packet1_trace[6] = third_visited_sw_id;
+				packet1_trace[7] = third_visited_sw_time;
+				packet1_trace[8] = third_visited_sw_out_port;
+				    
+				packet1_trace[9]  = forth_visited_sw_id;
+				packet1_trace[10] = forth_visited_sw_time;
+				packet1_trace[11] = forth_visited_sw_out_port;
+				
+				packet1_trace[12] = fifth_visited_sw_id;
+				packet1_trace[13] = fifth_visited_sw_time;
+				packet1_trace[14] = fifth_visited_sw_out_port;
+				*/
+			}
+			if ( packetData == 2)
+			{
+				packet_counter[1]= packet_counter[1]+1;
+				/*
+				packet2_trace[0] = first_visited_sw_id;
+				packet2_trace[1] = first_visited_sw_time;
+				packet2_trace[2] = first_visited_sw_out_port;
+				
+				packet2_trace[3] = second_visited_sw_id;
+				packet2_trace[4] = second_visited_sw_time;
+				packet2_trace[5] = second_visited_sw_out_port;
+				
+				packet2_trace[6] = third_visited_sw_id;
+				packet2_trace[7] = third_visited_sw_time;
+				packet2_trace[8] = third_visited_sw_out_port;
+				    
+				packet2_trace[9]  = forth_visited_sw_id;
+				packet2_trace[10] = forth_visited_sw_time;
+				packet2_trace[11] = forth_visited_sw_out_port;
+				
+				packet2_trace[12] = fifth_visited_sw_id;
+				packet2_trace[13] = fifth_visited_sw_time;
+				packet2_trace[14] = fifth_visited_sw_out_port;
+				*/
+			}
+			
+
+
+		}		
+		if (packetData == 1)// || packetData == 2) //for check all state without deadlock
+			self.done() after(4);
+	}
+	
+	msgsrv done() {
+		if ( (packet_counter[0] != 1) && (packet_counter[1] != 1) )
+			liveness_error = true;
+		int i ;
+		
+		//checking traces
+		/*
+		for (i=0 ; i < 15 ; i = i+3)
+		{
+			if ((packet1_trace[i] != 0) || (packet1_trace[i] != id)  ) // swId != 0 or != current host id because the conjestion on destination host is ok
+			{
+				int j ;
+				for (j=0 ; j < 15 ; j = j+3)
+				{
+					if ( (packet2_trace[j] != 0) && (packet2_trace[j] != id) )
+					{
+						if ( (packet1_trace[i] == packet2_trace[j] ) //switchId
+						   &&(packet1_trace[i+1] == packet2_trace[j+1]) //SwitchTime
+						   &&(packet1_trace[i+2] == packet2_trace[j+2]) ) //OutPort
+						   {
+						   	conjestion_error = true;
+						   }					
+					}
+
+				}				
+			}
+		
+		}	
+		*/		
+	
+		
+		self.done() after(4);
+	}
+	
+}
+
+main { 
+	
+	Controller controller(s1 , s2 , s3 , s4 , s5):(); 
+   	
+   	//Switch has 3 port ={0,1,2} 
+   	//ALl hosts connected to port 0 of switches with same id number for example h1 connected to port 0 of s1
+   	//parameters ordered = switchId , 5 pair of ( host and id )
+   	//mission is prevent packets reach from untrusted host to trusted hosts without request from trusted hosts.
+	Switch s1(controller):(1, h1, s2, s4); 
+	Switch s2(controller):(2, h2, s5, s3);
+	Switch s3(controller):(3, h3, s2, s4);
+	Switch s4(controller):(4, h4, s3, s5); 
+	Switch s5(controller):(5, h5, s2, s4); 
+ 
+	Host h1(s1):(1,0); // connect host c1 to switch s1 by id = 1 to port = 0 of switch
+	Host h2(s2):(2,0); // connect host c2 to switch s1 by id = 2 to port = 0 of switch
+	Host h3(s3):(3,0); // connect host c3 to switch s1 by id = 3 to port = 0 of switch
+	Host h4(s4):(4,0); // connect host c4 to switch s1 by id = 4 to port = 0 of switch
+	Host h5(s5):(5,0); // connect host c5 to switch s1 by id = 5 to port = 0 of switch
+ 
+}
+
+
