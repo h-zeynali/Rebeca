@@ -1,11 +1,11 @@
 property { 
 	
 	define {
-		client1_illegalAccess = c1.illegalAccess;
-		client2_illegalAccess = c2.illegalAccess;
-		client3_illegalAccess = c3.illegalAccess;
-		client4_illegalAccess = c4.illegalAccess;
-		client5_illegalAccess = c5.illegalAccess;
+		client1_Illegal_access = c1.Illegal_access;
+		client2_Illegal_access = c2.Illegal_access;
+		client3_Illegal_access = c3.Illegal_access;
+		client4_Illegal_access = c4.Illegal_access;
+		client5_Illegal_access = c5.Illegal_access;
 		client1_sshProtocolError = c1.sshProtocolError;
 		client2_sshProtocolError = c2.sshProtocolError;
 		client3_sshProtocolError = c3.sshProtocolError;
@@ -15,11 +15,11 @@ property {
 	}
 	
 	Assertion{
-		safety_client1_illegalAccess: !(client1_illegalAccess);
-		safety_client2_illegalAccess: !(client2_illegalAccess);
-		safety_client3_illegalAccess: !(client3_illegalAccess);
-		safety_client4_illegalAccess: !(client4_illegalAccess);
-		safety_client5_illegalAccess: !(client5_illegalAccess);
+		safety_client1_Illegal_access: !(client1_Illegal_access);
+		safety_client2_Illegal_access: !(client2_Illegal_access);
+		safety_client3_Illegal_access: !(client3_Illegal_access);
+		safety_client4_Illegal_access: !(client4_Illegal_access);
+		safety_client5_Illegal_access: !(client5_Illegal_access);
 		safety_client1_sshProtocolError: !(client1_sshProtocolError);
 		safety_client2_sshProtocolError: !(client2_sshProtocolError);
 		safety_client3_sshProtocolError: !(client3_sshProtocolError);
