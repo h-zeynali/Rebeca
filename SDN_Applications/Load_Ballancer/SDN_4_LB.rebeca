@@ -1,4 +1,3 @@
-//Write your code here !
 env int flowTableRowSize = 10; 
  
 reactiveclass Controller(10) { 
@@ -196,7 +195,7 @@ reactiveclass Switch(10) {
 	}
 	
 	msgsrv modifyState(byte headerID, byte port, byte action){
-		//new action rules to be inserted into the switchâ€™s flow-table
+		//new action rules to be inserted into the switch’s flow-table
 		//insert new rule to flow table
 		boolean ruleIsInserted;
 		ruleIsInserted = false;
