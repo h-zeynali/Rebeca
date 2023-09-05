@@ -2,12 +2,20 @@ property {
 	
 	define {
 		c1_SSHError = c1.shhError;
-
+		c2_liveness = c2.dataReceivedError;
+		s1_testError = s1.testError;
+		s1_testError1 = s1.testError1;
+		s1_testError2 = s1.testError2;
+		s1_testError3 = s1.testError3;
 	}
 	Assertion{
-
+		
 		safety_c1_SSHError: !(c1_SSHError);
-
+		Liveness_c2_dataReceived: !(c2_liveness);
+		s1_tesdtError: !(s1_testError);
+		s1_tesdtError1: !(s1_testError1);
+		s1_tesdtError2: !(s1_testError2);
+		s1_tesdtError3: !(s1_testError3);
 	}
 	
 }
