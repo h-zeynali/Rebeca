@@ -1,0 +1,37 @@
+property { 
+	
+	define {
+	
+		controller_Unwanted_routing_request = controller.Unwanted_routing_request;
+		client1_illegalAccess = h1.illegalAccess;
+		client2_illegalAccess = h2.illegalAccess;
+		client3_illegalAccess = h3.illegalAccess;
+		client4_illegalAccess = h4.illegalAccess;
+		client5_illegalAccess = h5.illegalAccess;
+		client1_liveness_error = h1.liveness_error;
+		client2_liveness_error = h2.liveness_error;
+		client3_liveness_error = h3.liveness_error;
+		client4_liveness_error = h4.liveness_error;
+		client5_liveness_error = h5.liveness_error;
+		//client5_congestion_error = h5.congestion_error;
+		client5_wp1_error = h5.wp1_error;
+	}
+	
+	Assertion{
+		safety_controller_Unwanted_routing_request: !(controller_Unwanted_routing_request);
+		safety_client1_illegalAccess: !(client1_illegalAccess);
+		safety_client2_illegalAccess: !(client2_illegalAccess);
+		safety_client3_illegalAccess: !(client3_illegalAccess);
+		safety_client4_illegalAccess: !(client4_illegalAccess);
+		safety_client5_illegalAccess: !(client5_illegalAccess);
+		safety_client1_liveness_error: !(client1_liveness_error);
+		safety_client2_liveness_error: !(client2_liveness_error);
+		safety_client3_liveness_error: !(client3_liveness_error);
+		safety_client4_liveness_error: !(client4_liveness_error);
+		safety_client5_liveness_error: !(client5_liveness_error);
+		//safety_client5_congestion_error: !(client5_congestion_error);
+		safety_client5_wp1_error: !(client5_wp1_error);
+				
+	}
+	
+}
