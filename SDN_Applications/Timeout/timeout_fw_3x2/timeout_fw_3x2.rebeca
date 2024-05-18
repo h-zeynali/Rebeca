@@ -1,0 +1,406 @@
+env int flowTableRowSize = 10; 
+env	int SIZE_OF_FT = 10;
+env	int MAX_TIMEOUT= 10;		
+
+reactiveclass Controller(4) { 
+	knownrebecs {
+		Switch s1;
+		Switch s2;
+		Switch s3;
+	}
+	statevars {
+		boolean RoutingError;
+	}
+	Controller() {
+		//self.initRoutings();
+		//self.changeRoutings() after(2);
+     	RoutingError = false;
+	}
+	msgsrv initRoutings(){ 	
+		//msgsrv modifyState(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol)
+		// path = f1_before
+		//s1.modifyState(1, 5, 1, 0, 0 , 1, 1);
+	}
+	msgsrv changeRoutings(){		
+		// path = f1_after
+		//s1.modifyState(1, 5, 2, 0 , 0 , 1, 1);
+	}
+	msgsrv newPacketInMessage(	byte switchId, byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port){
+		// This message is sent from a switch to the controller when the switch processes a packet for which it has no action rule to apply.  
+		RoutingError = true;
+		
+		//define Action for new packet received in switches related to each switches separated by ID
+		//action = 0 means forward packet to related port
+		//action = 1 means drop the packet
+		//protocol: 1 for SSH 0 for Normal
+		if (switchId == 1 )// if unknown packet arrive from s1
+		{
+			//s1.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,Switchout_port, 0 );
+		}
+		else if (switchId == 2) // if packet arrive from s2 
+		{
+			//s2.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,Switchout_port, 1 );
+		}
+		else if (switchId == 3) // if packet arrive from s3 
+		{
+			//s3.newPacketOutMessage(packetSrcId, packetDestId, packetData ,packetProtocol,Switchout_port, 1 );
+		}
+
+	}
+}
+
+reactiveclass Switch(4) { 
+	knownrebecs {
+		Controller controller;
+	} 
+	statevars {
+		byte SwId;
+		Switch [2] neighbor_switches;
+		Host host_connected_to_this_switch;
+		
+		// Flow Table (FT) 
+		//FT match Fields
+		byte [10] FTDestIP;
+		byte [10] FTSrcIP;
+		byte [10] FTIngress_port;
+		byte [10] FTProtocol;
+		//FT Priority
+		byte [10] FTPriority;
+		//FT instructions
+		byte [10] FTActionType;
+		byte [10] FTOut_port;
+		//FT Timeout
+		int [10] FTTimeout;  
+		
+		//int SIZE_OF_FT;
+		//int MAX_TIMOUT;				
+		boolean illegalAccess;
+	}
+	
+	Switch(byte switchId, Host connectedHost , Switch sw_ingress_port1, Switch sw_ingress_port2) {
+	    SwId = switchId;
+	    neighbor_switches[0] = sw_ingress_port1;
+		neighbor_switches[1] = sw_ingress_port2;
+		host_connected_to_this_switch = connectedHost;
+		
+	    illegalAccess 		= false;
+		initialing_FT();
+		self.FT_timeout_checking();
+	}
+
+	msgsrv FT_timeout_checking()
+	{
+		int i; 
+     	for (i = 0; i < SIZE_OF_FT; i = i + 1) 
+     	{
+     		if (FTSrcIP[i] != 0 && FTTimeout[i] == 0 )
+     		{
+     			removeRuleFromFT(FTSrcIP[i] , FTDestIP[i] , FTOut_port[i] , FTProtocol[i] , FTActionType[i], FTPriority[i] , FTTimeout[i] );
+     		}
+     	}
+ 		sortFlowTable();
+      	if (FTSrcIP[0] != 0 && FTTimeout[0] != 0 )
+     	{
+     		self.FT_timeout_checking() after(1);	
+     	}
+     	for (i = 0; i < SIZE_OF_FT; i = i + 1) 
+     	{
+     		if (FTTimeout[i] >= 0  )
+     		{
+	    		FTTimeout[i]		= FTTimeout[i] -1 ;
+     		}
+     	}
+	}
+	
+	msgsrv swHandlePacket(	byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port) 
+	{ 
+	    boolean hasRuleInTable= false;
+
+	    //lookup in flow table (table sorted by priority ) 
+	    int i;
+	    for (i = 0; i < MAX_TIMEOUT; i = i + 1) 
+	    {
+	    	boolean isMatchOccorred = matchOccorred(i , packetSrcId , packetDestId,  packetProtocol);
+	    	if ( isMatchOccorred == true) 
+	    	{
+	    		hasRuleInTable = true;
+				if (FTActionType[i] == 0) //forward
+				{
+	    			
+					if (FTOut_port[i] == 0) // rules related to host
+					{
+						host_connected_to_this_switch.hostHandlePacket(	packetSrcId, packetDestId, packetData, packetProtocol, Switchout_port);
+					}
+					else if (FTOut_port[i] == 1) // rules related to sw_ingress_port1
+					{
+    					neighbor_switches[0].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  Switchout_port);
+					}
+					else // rules related to sw_ingress_port2
+					{
+    					neighbor_switches[1].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  Switchout_port);
+					}
+				} 
+				// else do nothing means drop packet 
+			}
+		}
+		if (hasRuleInTable == false) // New packet recieved without match in F.T.(Flow Table)
+		{
+			controller.newPacketInMessage(	SwId, packetSrcId , packetDestId, packetData, packetProtocol, Switchout_port);
+		}
+	}
+	
+	msgsrv newPacketOutMessage(	byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port, byte action, byte priority , int timeout)
+	{
+		//This message is sent from the controller to a switch to notify 
+		//that it must re-try applying an action rule to a buffered packet. 
+		//The message includes the packet header.
+		
+		//insert new rule to flow table
+		boolean ruleIsInserted;
+		ruleIsInserted = insertOrModifyRuleInFT(packetSrcId , packetDestId, Switchout_port, action, packetProtocol , priority, timeout);
+	    
+	    if (ruleIsInserted == true){
+	    	self.swHandlePacket(packetSrcId, packetDestId, packetData , packetProtocol, Switchout_port) ;
+	    } 
+	}
+	
+	msgsrv modifyState(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority , int timeout)
+	{
+		insertOrModifyRuleInFT( packetSrcId , packetDestId, out_port, action, protocol , priority , timeout);
+		sortFlowTable();
+	}
+	
+	msgsrv removeState(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority, int timeout)
+	{
+		removeRuleFromFT( packetSrcId , packetDestId, out_port, action, protocol , priority , timeout);
+		sortFlowTable();
+	}
+	
+	
+	boolean insertOrModifyRuleInFT(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority, int timeout)
+	{
+			//action 1 = drop & 0 = forward
+			//new action rules to be inserted into the switch flow-table
+			//insert new rule to flow table
+			boolean ruleIsInserted;
+			ruleIsInserted = false;
+			sortFlowTable();
+			int i;
+			for (i = 0; i < SIZE_OF_FT; i = i + 1) {
+	    		if (ruleIsInserted == false) {
+	    			if (FTDestIP[i] == 0 || (FTSrcIP[i] == packetSrcId && FTDestIP[i] == packetDestId && FTProtocol[i] == protocol && FTPriority[i] == priority)) 
+	    			{
+	    				set_FT_entry( i ,  packetSrcId ,  packetDestId,  out_port,  action,  protocol,  priority, timeout);
+	    				ruleIsInserted = true;
+	    			}
+	    		}
+	    	}
+	   		sortFlowTable();
+	   		return ruleIsInserted;
+	}
+
+	
+	boolean removeRuleFromFT(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority, int timeout)
+	{
+			//action 1 = drop & 0 = forward
+			//new action rules to be inserted into the switch flow-table
+			//insert new rule to flow table
+			boolean ruleIsRemoved;
+			ruleIsRemoved = false;
+			int i;
+			for (i = 0; i < SIZE_OF_FT; i = i + 1) {
+	    		if (ruleIsRemoved == false) {
+	    			if ((FTSrcIP[i] == packetSrcId && FTDestIP[i] == packetDestId && FTProtocol[i] == protocol && FTPriority[i] == priority )) 
+	    			{
+						reset_FT_entry(i);
+	    				ruleIsRemoved = true;
+	    			}
+	    		}
+	    	}
+	   		//sortFlowTable();
+	   		return ruleIsRemoved;
+	}
+
+	boolean matchOccorred( int i , byte packetSrcId , byte packetDestId, byte packetProtocol)
+	{
+		if (FTDestIP[i] 		== packetDestId 
+	    	&& FTSrcIP[i] 		== packetSrcId 
+	    	&& FTProtocol[i] 	== packetProtocol )
+	    {
+	    	return true;
+	    }
+	    else
+	    { 
+	    	return false;
+	    }
+	}
+
+	boolean initialing_FT()
+	{
+		FT_reset(); // reset Flow table array
+		
+		if (SwId == 1)
+		{
+			//boolean set_FT_entry(int i , byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority , int timeout)
+			set_FT_entry( 0 , 1 , 2 , 1 , 0 , 0 , 2 , 3);
+			
+		}
+		else if (SwId == 2)
+		{
+			set_FT_entry( 0 , 1 , 2 , 0 , 0 , 0 , 2 , 2);
+			set_FT_entry( 1 , 1 , 2 , 2 , 0 , 0 , 1 , MAX_TIMEOUT);		
+		}
+		else if (SwId == 3) //Unsecure switch
+		{
+			set_FT_entry( 0 , 1 , 2 , 0 , 0 , 0 , 1 , MAX_TIMEOUT);
+		}
+		
+	}
+	
+	
+	boolean FT_reset()
+	{
+		int i; 
+     	for (i = 0; i < SIZE_OF_FT; i = i + 1) 
+     	{
+			reset_FT_entry( i );
+     	}
+	}
+	
+	boolean reset_FT_entry(int i)
+	{
+		set_FT_entry( i , 0 , 0 ,0 ,0 ,0 , 0, MAX_TIMEOUT);
+	}
+
+	boolean set_FT_entry(int i , byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority , int timeout)
+	{
+		FTDestIP[i] 		= packetDestId;
+		FTSrcIP[i] 			= packetSrcId;
+		FTOut_port[i] 		= out_port;
+		FTActionType[i] 	= action;
+		FTProtocol[i] 		= protocol;
+		FTPriority[i]		= priority;
+		FTTimeout[i]		= timeout;
+	}	
+	
+	
+	// Manual swap function
+	boolean swap(int a, int b) 
+	{
+	    int temp = a;
+	    a = b;
+	    b = temp;
+	    return true;
+	}
+
+	// Function to sort the arrays based on FTPriority
+	boolean sortFlowTable()
+	{
+	    for (int i = 0; i < SIZE_OF_FT - 1; i++) {
+	        for (int j = 0; j < SIZE_OF_FT - i - 1; j++) {
+	            if (FTPriority[j] > FTPriority[j + 1]) {
+	                // Swapping elements in the priority array
+	                swap(FTPriority[j], FTPriority[j + 1]);
+	
+	                // Swapping corresponding elements in all other arrays
+	                swap(FTDestIP[j]	, FTDestIP[j + 1]);
+	                swap(FTSrcIP[j]		, FTSrcIP[j + 1]);
+	                swap(FTProtocol[j]	, FTProtocol[j + 1]);
+	                swap(FTOut_port[j]	, FTOut_port[j + 1]);
+	                swap(FTActionType[j], FTActionType[j + 1]);
+	            }
+	        }
+	    }
+	    return true;
+	}
+	
+	
+
+	
+}
+
+
+reactiveclass Host(4) { 
+	knownrebecs {
+		Switch knownSwitch;
+ 	}
+	statevars { 
+		byte id; 
+		boolean illegalAccess;
+		boolean liveness_error;
+		byte 	knownSwitchout_port;  
+
+
+	}
+	Host(byte hostId , byte Switchout_portNumber) { 
+		id = hostId;
+		knownSwitchout_port 	= Switchout_portNumber; 
+		illegalAccess 		= false;
+		liveness_error 		= false;
+
+		
+		// Represantative packets will be send from h1 to destination h2
+		if (id == 1) { 
+			// send from host with ip = 1 to destination host with ip = 5 packetData =1 with protocol = 0
+			self.sendInPacket(1, 2, 1, 0) after(1); // should go through path = f1 
+			//self.sendInPacket(1, 2, 2, 0) after(2);
+			//self.sendInPacket(1, 2, 3, 0) after(3);
+			//self.sendInPacket(1, 2, 4, 0) after(4);
+		}
+
+	} 
+	msgsrv sendInPacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol) {
+		knownSwitch.swHandlePacket(	packetSrcId, packetDestId, packetData, packetProtocol , knownSwitchout_port) ; 
+	}
+	msgsrv hostHandlePacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port) {
+		
+		if (id == 1  ) //trusted host
+		{
+			// there is no security rule for this host
+		}
+		else if (id == 2 ) //trusted host
+		{
+			
+			// there is no security rule for this host
+		}
+		else if (id == 3)
+		{
+			illegalAccess = true;
+			// packetData is = uniqe combination of source and destination for find policy violations
+			if ( packetSrcId == 1  || packetSrcId == 2 )
+			{
+				illegalAccess = true;
+			}
+		}
+	
+		if (packetData == 1) //for avoid deadlock error and  check all states
+			self.done() after(10/*MAX_TIMEOUT*/);
+	}
+	
+	msgsrv done() {
+		//if ( (packet_counter[0] != 1) && (packet_counter[1] != 1) )
+			liveness_error = true;
+	
+		self.done() after(1/*MAX_TIMEOUT*/);
+	}
+}
+
+
+
+main { 
+	
+	Controller controller(s1 , s2 , s3 ):(); 
+   	
+   	//Switch has 3 port ={0,1,2} 
+   	//All hosts connected to port 0 of switches with same id number for example h1 connected to port 0 of s1
+   	//parameters ordered = switchId , 5 pair of ( host and id )
+   	//mission is prevent packets reach from untrusted host to trusted hosts without request from trusted hosts.
+	Switch s1(controller):(1, h1, s2, s3);
+	Switch s2(controller):(2, h2, s1, s3);
+	Switch s3(controller):(3, h3, s1, s2);
+ 
+ 	Host h1(s1):(1,0); // connect host c1 to switch s1 by id = 1 to ingress_port = 0 of switch
+	Host h2(s2):(2,0); // connect host c2 to switch s1 by id = 2 to ingress_port = 0 of switch
+	Host h3(s3):(3,0); // connect host c3 to switch s1 by id = 3 to ingress_port = 0 of switch
+
+}
