@@ -1,0 +1,456 @@
+//featurevar FT_PRIODIC_PUSH;
+//env int flowTableRowSize = 10; 
+env	int SIZE_OF_FT = 10;
+env	int MAX_TIMEOUT= 10;
+env byte MAX_PORT_NUMBER = 3;
+env byte DUMMY_HOST = 0;
+env byte HOST1 = 1;
+env byte HOST2 = 2;
+env byte HOST3 = 3;
+env byte HOST4 = 4;
+env byte HOST5 = 5;
+env byte HOST6 = 6;
+env byte HOST7 = 7;
+env byte HOST8 = 8;
+env byte HOST9 = 9;
+env byte HOST10 = 10;
+env byte DUMMY_SWITCH = 0;
+env byte SWITCH1 = 1;
+env byte SWITCH2 = 2;
+env byte SWITCH3 = 3;
+env byte SWITCH4 = 4;
+env byte SWITCH5 = 5;
+env byte SWITCH6 = 6;
+env byte SWITCH7 = 7;
+env byte SWITCH8 = 8;
+env byte SWITCH9 = 9;
+env byte SWITCH10 = 10;
+env byte PORT0 = 0;
+env byte PORT1 = 1;
+env byte PORT2 = 2;
+env byte PORT3 = 3;
+env byte FORWARD = 0;
+env byte DROP = 1;
+env byte TCP = 0;
+env byte SSH = 1;
+env byte NORMAL = 0;
+env byte PRIORITY1 = 1;
+env byte PRIORITY2 = 2;
+env byte TIMEOUT1S = 1;
+env byte TIMEOUT2S = 2;
+env byte TIMEOUT3S = 3;
+env byte one_sec = 1;
+env byte two_sec = 2;
+env byte three_sec = 3;
+env byte four_sec = 4;
+
+reactiveclass Controller(4) { 
+	knownrebecs {
+		Switch switch1;
+		Switch switch2;
+		Switch switch3;
+		Switch switch4;
+		Switch switch5;
+		Switch switch6;
+	}
+	statevars {
+		boolean RoutingError;
+	}
+	Controller() {
+		//self.initRoutings();
+		//self.changeRoutings() after(2);
+     	RoutingError = false;
+	}
+	msgsrv initRoutings(){
+		//switch.modifyState(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol)
+		
+		// path = f1_before
+		//switch1.modifyState(HOST1, HOST5, PORT1, FORWARD , TCP , PRIORITY1, TIMEOUT3S) ;
+	}
+	
+	msgsrv changeRoutings(){		
+
+	}
+
+	msgsrv newPacketInMessage(	byte switchId, byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port){
+		// This message is sent from a switch to the controller when the switch processes a packet for which it has no action rule to apply.  
+		RoutingError = true;
+
+	}
+}
+
+reactiveclass Switch(4) { 
+	knownrebecs {
+		Controller controller;
+	} 
+	statevars {
+		byte SwId;
+		Switch [3/*MAX_PORT_NUMBER*/] neighbor_switches;
+		Host host_connected_to_this_switch;
+		
+		// Flow Table (FT) 
+		//FT match Fields
+		byte [10] FTDestIP;
+		byte [10] FTSrcIP;
+		byte [10] FTIngress_port;
+		byte [10] FTProtocol;
+		//FT Priority
+		byte [10] FTPriority;
+		//FT instructions
+		byte [10] FTActionType;
+		byte [10] FTOut_port;
+		//FT Timeout
+		int [10] FTTimeout;  
+		
+		//int SIZE_OF_FT;
+		//int MAX_TIMOUT;				
+		boolean illegalAccess;
+		int selectedIf;
+	}
+	
+	Switch(byte switchId, Host connectedHost , Switch sw_connected_to_port1, Switch sw_connected_to_port2 , Switch sw_connected_to_port3) {
+	    SwId = switchId;
+	    
+	    if (SwId != DUMMY_SWITCH)
+	    {
+		    /*MAX_PORT_NUMBER*/
+		    host_connected_to_this_switch = connectedHost;
+		    neighbor_switches[0] = sw_connected_to_port1;
+			neighbor_switches[1] = sw_connected_to_port2;
+			neighbor_switches[2] = sw_connected_to_port3;
+			
+			
+		    illegalAccess 		= false;
+		    selectedIf = 0;
+			
+			initialing_FT();
+			
+			self.FT_timeout_checking() after(1);
+		}
+   	
+	}
+	
+
+		/*Automatic Generated Code for FLOW_TABLE */
+
+
+	
+	@priority(1)	
+	msgsrv FT_timeout_checking()
+	{
+		if (SwId != DUMMY_SWITCH)
+	    {
+			int i; 
+	     	for (i = 0; i < SIZE_OF_FT; i = i + 1) 
+	     	{
+	     		if (FTSrcIP[i] != 0 && FTTimeout[i] == 0 )
+	     		{
+	     			removeRuleFromFT(FTSrcIP[i] , FTDestIP[i] , FTOut_port[i] , FTProtocol[i] , FTActionType[i], FTPriority[i] , FTTimeout[i] );
+	     		}
+	     	}
+	 		sortFlowTable();
+	      	if (FTSrcIP[0] != 0 && FTTimeout[0] != 0 )
+	     	{
+	     		self.FT_timeout_checking() after(1);	
+	     		
+	     	}
+	     	    	
+	     	for (i = 0; i < SIZE_OF_FT; i = i + 1) 
+	     	{
+	     		if (FTTimeout[i] >= 0  )
+	     		{
+		    		FTTimeout[i]		= FTTimeout[i] -1 ;
+	     		}
+	
+	     	}
+	     	selectedIf = 0;
+		}
+     	
+	}
+	
+
+	msgsrv swHandlePacket(	byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port) 
+	{ 
+	    if (SwId != DUMMY_SWITCH)
+	    {
+		    boolean hasRuleInTable= false;
+	
+		    //lookup in flow table (table sorted by priority ) 
+		    int i;
+		    for (i = 0; i < MAX_TIMEOUT; i = i + 1) 
+		    {
+		    	//boolean isMatchOccorred = matchOccorred(i , packetSrcId , packetDestId,  packetProtocol);
+		    	//if ( isMatchOccorred == true)
+		    	if (FTDestIP[i] 	== packetDestId 
+		    	&& FTSrcIP[i] 		== packetSrcId 
+		    	&& FTProtocol[i] 	== packetProtocol && !hasRuleInTable )
+		    	{
+		    		hasRuleInTable = true;
+		    		selectedIf = 0;
+					if (FTActionType[i] == 0) //forward
+					{
+		    			
+						if (FTOut_port[i] == 0) // rules related to host
+						{
+							selectedIf = 1;
+							host_connected_to_this_switch.hostHandlePacket(	packetSrcId, packetDestId, packetData, packetProtocol, Switchout_port);
+						}
+						else if (FTOut_port[i] == 1) // rules related to sw_connected_to_port1
+						{
+	    					neighbor_switches[0].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  Switchout_port);
+	    					selectedIf = 2;
+						}
+						else if (FTOut_port[i] == 2) // rules related to sw_connected_to_port2
+						{
+	    					neighbor_switches[1].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  Switchout_port);
+	    					selectedIf = 3;
+						}
+						else if (FTOut_port[i] == 3) // rules related to sw_connected_to_port3
+						{
+	    					neighbor_switches[2].swHandlePacket( packetSrcId ,  packetDestId,  packetData,  packetProtocol,  Switchout_port);
+	    					selectedIf = 4;
+						}
+					} 
+					// else do nothing means drop packet 
+				}
+			}
+			if (hasRuleInTable == false) // New packet recieved without match in F.T.(Flow Table)
+			{
+				controller.newPacketInMessage(	SwId, packetSrcId , packetDestId, packetData, packetProtocol, Switchout_port);
+			}
+		}
+	}
+	
+	msgsrv newPacketOutMessage(	byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port, byte action, byte priority , int timeout)
+	{
+	
+		//This message is sent from the controller to a switch to notify 
+		//that it must re-try applying an action rule to a buffered packet. 
+		//The message includes the packet header.
+		
+		if (SwId != DUMMY_SWITCH)
+	    {
+			//insert new rule to flow table
+			boolean ruleIsInserted;
+			ruleIsInserted = insertRuleInFT(packetSrcId , packetDestId, Switchout_port, action, packetProtocol , priority, timeout);
+		    sortFlowTable();
+		    if (ruleIsInserted == true){
+		    	self.swHandlePacket(packetSrcId, packetDestId, packetData , packetProtocol, Switchout_port) ;
+		    }
+		} 
+
+		
+	}
+
+	msgsrv modifyState(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority , int timeout)
+	{
+		if (SwId != DUMMY_SWITCH)
+	    {
+			insertRuleInFT( packetSrcId , packetDestId, out_port, action, protocol , priority , timeout);
+			sortFlowTable();
+		}
+	}
+	
+	msgsrv removeState(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority, int timeout)
+	{
+		if (SwId != DUMMY_SWITCH)
+	    {
+			removeRuleFromFT( packetSrcId , packetDestId, out_port, action, protocol , priority , timeout);
+			sortFlowTable();
+		}
+	}
+
+	
+	boolean FT_reset()
+	{
+		int i; 
+     	for (i = 0; i < SIZE_OF_FT; i = i + 1) 
+     	{
+			reset_FT_entry( i );
+     	}
+	}
+	
+	boolean reset_FT_entry(int i)
+	{
+		set_FT_entry( i , 0 , 0 ,0 ,0 ,0 , 0, MAX_TIMEOUT);
+	}
+
+	boolean set_FT_entry(int i , byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority , int timeout)
+	{
+		FTDestIP[i] 		= packetDestId;
+		FTSrcIP[i] 			= packetSrcId;
+		FTOut_port[i] 		= out_port;
+		FTActionType[i] 	= action;
+		FTProtocol[i] 		= protocol;
+		FTPriority[i]		= priority;
+		FTTimeout[i]		= timeout;
+	}	
+	
+	
+	// Manual swap function
+	boolean swap(int a, int b) 
+	{
+	    int temp = a;
+	    a = b;
+	    b = temp;
+	    return true;
+	}
+
+	// Function to sort the arrays based on FTPriority
+	boolean sortFlowTable()
+	{
+	    for (int i = 0; i < SIZE_OF_FT - 1; i++) {
+	        for (int j = 0; j < SIZE_OF_FT - i - 1; j++) {
+	            if (FTPriority[j] > FTPriority[j + 1]) {
+	                // Swapping elements in the priority array
+	                swap(FTPriority[j], FTPriority[j + 1]);
+	
+	                // Swapping corresponding elements in all other arrays
+	                swap(FTDestIP[j]	, FTDestIP[j + 1]);
+	                swap(FTSrcIP[j]		, FTSrcIP[j + 1]);
+	                swap(FTProtocol[j]	, FTProtocol[j + 1]);
+	                swap(FTOut_port[j]	, FTOut_port[j + 1]);
+	                swap(FTActionType[j], FTActionType[j + 1]);
+	            }
+	        }
+	    }
+	    return true;
+	}
+	
+	
+	boolean insertRuleInFT(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority, int timeout)
+	{
+			//action 1 = drop & 0 = forward
+			//new action rules to be inserted into the switch flow-table
+			//insert new rule to flow table
+			boolean ruleIsInserted;
+			ruleIsInserted = false;
+			int i;
+			for (i = 0; i < SIZE_OF_FT; i = i + 1) {
+	    		if (ruleIsInserted == false) {
+	    			if (FTDestIP[i] == 0 || (FTSrcIP[i] == packetSrcId && FTDestIP[i] == packetDestId && FTProtocol[i] == protocol && FTPriority[i] == priority)) 
+	    			{
+	    				set_FT_entry( i ,  packetSrcId ,  packetDestId,  out_port,  action,  protocol,  priority, timeout);
+	    				ruleIsInserted = true;
+	    			}
+	    		}
+	    	}
+	   		//sortFlowTable();
+	   		return ruleIsInserted;
+	}
+
+	
+	boolean removeRuleFromFT(byte packetSrcId , byte packetDestId, byte out_port, byte action, byte protocol, byte priority, int timeout)
+	{
+			//action 1 = drop & 0 = forward
+			//new action rules to be inserted into the switch flow-table
+			//insert new rule to flow table
+			boolean ruleIsRemoved;
+			ruleIsRemoved = false;
+			int i;
+			for (i = 0; i < SIZE_OF_FT; i = i + 1) {
+	    		if (ruleIsRemoved == false) {
+	    			if ((FTSrcIP[i] == packetSrcId && FTDestIP[i] == packetDestId && FTProtocol[i] == protocol && FTPriority[i] == priority )) 
+	    			{
+						reset_FT_entry(i);
+	    				ruleIsRemoved = true;
+	    			}
+	    		}
+	    	}
+	   		//sortFlowTable();
+	   		return ruleIsRemoved;
+	}
+	
+	boolean matchOccorred( int i , byte packetSrcId , byte packetDestId, byte packetProtocol)
+	{
+		if (FTDestIP[i] 		== packetDestId 
+	    	&& FTSrcIP[i] 		== packetSrcId 
+	    	&& FTProtocol[i] 	== packetProtocol )
+	    {
+	    	return true;
+	    }
+	    else
+	    { 
+	    	return false;
+	    }
+	}
+	
+}
+	
+reactiveclass Host(4) { 
+	knownrebecs {
+		Switch knownSwitch;
+ 	}
+	statevars { 
+		byte id; 
+		boolean illegalAccess;
+		boolean liveness_error;
+		byte 	knownSwitchout_port;  
+		int[6 /* MAX_HOST_COUNT */] packet_counter;
+
+
+	}
+	Host(byte hostId , byte Switchout_portNumber) { 
+		id = hostId;
+		knownSwitchout_port 	= Switchout_portNumber; 
+		illegalAccess 		= false;
+		liveness_error 		= false;
+
+		if (id != DUMMY_HOST  ) 
+		{
+			/*Automatic Generated Code for SENDING_PACKET */
+		}
+		
+	} 
+	
+
+
+	msgsrv sendInPacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol) {
+		knownSwitch.swHandlePacket(	packetSrcId, packetDestId, packetData, packetProtocol , knownSwitchout_port) ; 
+	}
+	
+	msgsrv hostHandlePacket(byte packetSrcId , byte packetDestId, byte packetData, byte packetProtocol, byte Switchout_port) {
+		
+		if (id != DUMMY_HOST  ) 
+		{	
+			/*Automatic Generated Code for CHECK_REACHAIBILITY */
+
+		
+		if (packetData == 1) //for avoid deadlock error and  check all states
+				self.done() after(10/*MAX_TIMEOUT*/);
+		}
+	}
+	
+	msgsrv done() {
+		//if ( (packet_counter[0] != 1) && (packet_counter[1] != 1) )
+			liveness_error = true;
+	
+		self.done() after(1/*MAX_TIMEOUT*/);
+	}
+}
+
+main { 
+	
+	Controller controller(switch1 , switch2 , switch3 , dummy_switch ,dummy_switch ,dummy_switch ):(); 
+   	
+   	//Switch has 4 port ={0,1,2,3} 
+   	//All hosts connected to port 0 of switches with same id number for example host1 connected to port 0 of switch1
+   	//parameters ordered : switchId , connected_host , switch_connected_to_port1 , switch_connected_to_port2 , switch_connected_to_port3
+ 	
+ 	
+	Switch dummy_switch(controller):(0, dummy_host, dummy_switch, dummy_switch ,dummy_switch);
+	
+	/*Automatic Generated Code for SWITCH_TOPOLOGY */
+	Switch switch1 (controller):(1, host1, switch2, switch3, dummy_switch);
+	Switch switch2 (controller):(2, host2, switch1, switch3, dummy_switch);
+	Switch switch3 (controller):(3, host3, switch1, switch2, dummy_switch);
+	
+
+ 	Host dummy_host(dummy_switch):(0,0);
+	/*Automatic Generated Code for HOST_TOPOLOGY */
+Host host1(switch1):(1,0);
+Host host2(switch2):(2,0);
+Host host3(switch3):(3,0);
+
+
+}
