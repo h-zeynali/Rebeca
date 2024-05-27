@@ -1,0 +1,91 @@
+property { 
+	define {
+	
+		controller_RoutingError = controller.RoutingError;
+
+		/*Automatic Generated Code for ILLIGAL_ACCESS */
+		client1_illegalAccess = host1.illegalAccess;
+		client2_illegalAccess = host2.illegalAccess;
+		client3_illegalAccess = host3.illegalAccess;
+		client4_illegalAccess = host4.illegalAccess;
+		client5_illegalAccess = host5.illegalAccess;
+		client6_illegalAccess = host6.illegalAccess;
+		client7_illegalAccess = host7.illegalAccess;
+		client8_illegalAccess = host8.illegalAccess;
+		client9_illegalAccess = host9.illegalAccess;
+		client10_illegalAccess = host10.illegalAccess;
+		client11_illegalAccess = host11.illegalAccess;
+		client12_illegalAccess = host12.illegalAccess;
+		client13_illegalAccess = host13.illegalAccess;
+		client14_illegalAccess = host14.illegalAccess;
+		client15_illegalAccess = host15.illegalAccess;
+		client16_illegalAccess = host16.illegalAccess;
+
+
+		/*Automatic Generated Code for LIVENESS_ERROR */
+		client1_liveness_error = host1.liveness_error;
+		client2_liveness_error = host2.liveness_error;
+		client3_liveness_error = host3.liveness_error;
+		client4_liveness_error = host4.liveness_error;
+		client5_liveness_error = host5.liveness_error;
+		client6_liveness_error = host6.liveness_error;
+		client7_liveness_error = host7.liveness_error;
+		client8_liveness_error = host8.liveness_error;
+		client9_liveness_error = host9.liveness_error;
+		client10_liveness_error = host10.liveness_error;
+		client11_liveness_error = host11.liveness_error;
+		client12_liveness_error = host12.liveness_error;
+		client13_liveness_error = host13.liveness_error;
+		client14_liveness_error = host14.liveness_error;
+		client15_liveness_error = host15.liveness_error;
+		client16_liveness_error = host16.liveness_error;
+
+
+
+	}
+	
+	Assertion{
+
+		safety_controller_assertion4test: !(controller_RoutingError);
+	
+		/*Automatic Generated Code for SAFTY_HOST */	
+		safety_host1_illegalAccess: !(client1_illegalAccess);
+		safety_host2_illegalAccess: !(client2_illegalAccess);
+		safety_host3_illegalAccess: !(client3_illegalAccess);
+		safety_host4_illegalAccess: !(client4_illegalAccess);
+		safety_host5_illegalAccess: !(client5_illegalAccess);
+		safety_host6_illegalAccess: !(client6_illegalAccess);
+		safety_host7_illegalAccess: !(client7_illegalAccess);
+		safety_host8_illegalAccess: !(client8_illegalAccess);
+		safety_host9_illegalAccess: !(client9_illegalAccess);
+		safety_host10_illegalAccess: !(client10_illegalAccess);
+		safety_host11_illegalAccess: !(client11_illegalAccess);
+		safety_host12_illegalAccess: !(client12_illegalAccess);
+		safety_host13_illegalAccess: !(client13_illegalAccess);
+		safety_host14_illegalAccess: !(client14_illegalAccess);
+		safety_host15_illegalAccess: !(client15_illegalAccess);
+		safety_host16_illegalAccess: !(client16_illegalAccess);
+
+
+		/*Automatic Generated Code for SAFTY_PACKET */	
+		safety_packet1_liveness_error: !(client1_liveness_error);
+		safety_packet2_liveness_error: !(client2_liveness_error);
+		safety_packet3_liveness_error: !(client3_liveness_error);
+		safety_packet4_liveness_error: !(client4_liveness_error);
+		safety_packet5_liveness_error: !(client5_liveness_error);
+		safety_packet6_liveness_error: !(client6_liveness_error);
+		safety_packet7_liveness_error: !(client7_liveness_error);
+		safety_packet8_liveness_error: !(client8_liveness_error);
+		safety_packet9_liveness_error: !(client9_liveness_error);
+		safety_packet10_liveness_error: !(client10_liveness_error);
+		safety_packet11_liveness_error: !(client11_liveness_error);
+		safety_packet12_liveness_error: !(client12_liveness_error);
+		safety_packet13_liveness_error: !(client13_liveness_error);
+		safety_packet14_liveness_error: !(client14_liveness_error);
+		safety_packet15_liveness_error: !(client15_liveness_error);
+		safety_packet16_liveness_error: !(client16_liveness_error);
+	
+
+	}
+	
+}
