@@ -1,0 +1,22 @@
+<model-checking-report>
+<system-info>
+	<total-spent-time>1</total-spent-time>
+	<reached-states>265</reached-states>
+	<reached-transitions>265</reached-transitions>
+	<consumed-mem>179140</consumed-mem>
+</system-info>
+<checked-property>
+	<type>Reachability</type>
+	<name>Deadlock-Freedom and No Deadline Missed</name>
+	<result>assertion failed</result>
+	<message>safety_packet49_liveness_error</message>
+<options>
+	<option>Safe mode is enabled</option>
+	<option>TTS</option>
+</options>
+</checked-property>
+<extra-details>
+	<timed-states>4</timed-states>
+	<timed-transitions>4</timed-transitions>
+</extra-details>
+<counter-example-trace>
